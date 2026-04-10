@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  platform  String   // "facebook" | "instagram"
+  name      String   // Page name or IG username
+  platformId String  // Facebook Page ID or IG Business Account ID
+  accessToken String
+  tokenExpiry DateTime?
+  avatarUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([platform, platformId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  content   String
+  mediaUrls String?  // JSON array of media URLs
+  platforms String   // JSON array of platform IDs posted to
+  status    String   @default("draft") // "draft" | "published" | "failed" | "scheduled"
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  results   String?  // JSON object with results per platform
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
