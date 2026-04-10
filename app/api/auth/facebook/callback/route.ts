@@ -25,6 +25,10 @@ export async function GET(req: NextRequest) {
     const { access_token: longToken, expires_in } =
       await getLongLivedToken(shortToken)
 
+    const tokenExpiry = expires_in
+      ? new Date(Date.now() + expires_in * 1000)
+      : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) // fallback 60 days
+
     // 3. Get user's Facebook Pages
     const pages = await getUserPages(longToken)
 
@@ -47,7 +51,7 @@ export async function GET(req: NextRequest) {
         update: {
           name: page.name,
           accessToken: page.access_token,
-          tokenExpiry: new Date(Date.now() + expires_in * 1000),
+          tokenExpiry,
           avatarUrl: page.picture?.data?.url,
         },
         create: {
@@ -55,7 +59,7 @@ export async function GET(req: NextRequest) {
           platformId: page.id,
           name: page.name,
           accessToken: page.access_token,
-          tokenExpiry: new Date(Date.now() + expires_in * 1000),
+          tokenExpiry,
           avatarUrl: page.picture?.data?.url,
         },
       })
@@ -73,7 +77,7 @@ export async function GET(req: NextRequest) {
           update: {
             name: igAccount.username || igAccount.name || "Instagram",
             accessToken: page.access_token, // IG uses the Page token
-            tokenExpiry: new Date(Date.now() + expires_in * 1000),
+            tokenExpiry,
             avatarUrl: igAccount.profile_picture_url,
           },
           create: {
@@ -81,7 +85,7 @@ export async function GET(req: NextRequest) {
             platformId: igAccount.id,
             name: igAccount.username || igAccount.name || "Instagram",
             accessToken: page.access_token,
-            tokenExpiry: new Date(Date.now() + expires_in * 1000),
+            tokenExpiry,
             avatarUrl: igAccount.profile_picture_url,
           },
         })

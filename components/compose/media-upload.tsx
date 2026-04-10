@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import type { MediaFile } from "@/types"
-import { ImagePlus, X, Upload } from "lucide-react"
+import { ImagePlus, X, Upload, Loader2 } from "lucide-react"
 
 interface MediaUploadProps {
   mediaFiles: MediaFile[]
@@ -107,6 +107,11 @@ export function MediaUpload({ mediaFiles, onChange }: MediaUploadProps) {
                 >
                   <X className="size-3" />
                 </button>
+                {file.uploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <Loader2 className="size-5 animate-spin text-white" />
+                  </div>
+                )}
                 {file.type === "video" && (
                   <div className="absolute bottom-1 left-1 rounded-sm bg-black/70 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider text-white">
                     Video

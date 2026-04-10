@@ -1,13 +1,23 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
-import type { MediaFile, AccountInfo, PostResult } from "@/types"
+import { useState, useCallback, useEffect, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
+import type { MediaFile, AccountInfo, PostResult, VideoMode } from "@/types"
 import { Sidebar } from "@/components/sidebar"
 import { ComposeForm } from "@/components/compose-form"
 import { PreviewPanel } from "@/components/preview-panel"
 import { toast } from "sonner"
 
 export default function Page() {
+  return (
+    <Suspense>
+      <PageContent />
+    </Suspense>
+  )
+}
+
+function PageContent() {
+  const searchParams = useSearchParams()
   const [content, setContent] = useState("")
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([
     "facebook",
@@ -16,6 +26,7 @@ export default function Page() {
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [accounts, setAccounts] = useState<AccountInfo[]>([])
   const [draftId, setDraftId] = useState<string | null>(null)
+  const [videoMode, setVideoMode] = useState<VideoMode>("reel")
   const [posting, setPosting] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
   const [postResult, setPostResult] = useState<PostResult | null>(null)
@@ -29,10 +40,9 @@ export default function Page() {
   }, [])
 
   // Load draft from URL ?draft=id
+  const draftParam = searchParams.get("draft")
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const id = params.get("draft")
-    if (!id) return
+    if (!draftParam) return
 
     fetch("/api/posts")
       .then((res) => res.json())
@@ -41,25 +51,101 @@ export default function Page() {
           posts: {
             id: string
             content: string
+            mediaUrls: string | null
             platforms: string
             status: string
           }[]
         ) => {
-          const draft = posts.find((p) => p.id === id && p.status === "draft")
+          const draft = posts.find(
+            (p) => p.id === draftParam && p.status === "draft"
+          )
           if (draft) {
             setDraftId(draft.id)
             setContent(draft.content)
             setSelectedPlatforms(JSON.parse(draft.platforms))
             setPostResult(null)
+
+            // Restore media from saved URLs
+            if (draft.mediaUrls) {
+              const urls: string[] = JSON.parse(draft.mediaUrls)
+              const restored: MediaFile[] = urls.map((url) => ({
+                id: crypto.randomUUID(),
+                preview: url,
+                type: url.match(/\.(mp4|mov|webm|avi)/)
+                  ? ("video" as const)
+                  : ("image" as const),
+                uploadedUrl: url,
+              }))
+              setMediaFiles(restored)
+            }
           }
         }
       )
       .catch(() => {})
+  }, [draftParam])
+
+  // Upload new media files directly to Cloudinary on select
+  const handleMediaFilesChange = useCallback((files: MediaFile[]) => {
+    setMediaFiles(files)
+
+    files.forEach(async (file) => {
+      if (file.uploadedUrl || file.uploading || !file.file) return
+
+      setMediaFiles((prev) =>
+        prev.map((f) => (f.id === file.id ? { ...f, uploading: true } : f))
+      )
+
+      try {
+        // Get signed params from our API
+        const signRes = await fetch("/api/upload", { method: "POST" })
+        if (!signRes.ok) throw new Error("Failed to get upload signature")
+        const { signature, timestamp, folder, apiKey, cloudName } =
+          await signRes.json()
+
+        // Upload directly to Cloudinary
+        const formData = new FormData()
+        formData.append("file", file.file!)
+        formData.append("signature", signature)
+        formData.append("timestamp", String(timestamp))
+        formData.append("folder", folder)
+        formData.append("api_key", apiKey)
+        formData.append("resource_type", "auto")
+
+        const uploadRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+          { method: "POST", body: formData }
+        )
+
+        if (uploadRes.ok) {
+          const { secure_url } = await uploadRes.json()
+          setMediaFiles((prev) =>
+            prev.map((f) =>
+              f.id === file.id
+                ? { ...f, uploadedUrl: secure_url, uploading: false }
+                : f
+            )
+          )
+        } else {
+          throw new Error("Upload failed")
+        }
+      } catch {
+        setMediaFiles((prev) =>
+          prev.map((f) =>
+            f.id === file.id ? { ...f, uploading: false } : f
+          )
+        )
+        toast.error("Failed to upload media")
+      }
+    })
   }, [])
 
   const handleSaveDraft = useCallback(async () => {
     setSavingDraft(true)
     try {
+      const uploadedUrls = mediaFiles
+        .filter((f) => f.uploadedUrl)
+        .map((f) => f.uploadedUrl)
+
       const res = await fetch("/api/drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -67,6 +153,7 @@ export default function Page() {
           id: draftId || undefined,
           content,
           platforms: selectedPlatforms,
+          mediaUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
         }),
       })
       const data = await res.json()
@@ -84,18 +171,13 @@ export default function Page() {
     setPostResult(null)
 
     try {
-      // Upload media files
+      // Collect pre-uploaded media URLs
       const mediaUrls: string[] = []
+      const mediaTypes: ("image" | "video")[] = []
       for (const file of mediaFiles) {
-        const formData = new FormData()
-        formData.append("file", file.file)
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        })
-        if (uploadRes.ok) {
-          const { url } = await uploadRes.json()
-          mediaUrls.push(url)
+        if (file.uploadedUrl) {
+          mediaUrls.push(file.uploadedUrl)
+          mediaTypes.push(file.type)
         }
       }
 
@@ -107,6 +189,8 @@ export default function Page() {
           content,
           platforms: selectedPlatforms,
           mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
+          mediaTypes: mediaTypes.length > 0 ? mediaTypes : undefined,
+          videoMode,
         }),
       })
 
@@ -155,7 +239,9 @@ export default function Page() {
             selectedPlatforms={selectedPlatforms}
             onPlatformsChange={setSelectedPlatforms}
             mediaFiles={mediaFiles}
-            onMediaFilesChange={setMediaFiles}
+            onMediaFilesChange={handleMediaFilesChange}
+            videoMode={videoMode}
+            onVideoModeChange={setVideoMode}
             onPost={handlePost}
             onSaveDraft={handleSaveDraft}
             posting={posting}

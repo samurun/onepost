@@ -2,10 +2,20 @@
 
 import { useRef } from "react"
 import { cn } from "@/lib/utils"
-import type { MediaFile, PostResult } from "@/types"
+import type { MediaFile, PostResult, VideoMode } from "@/types"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { ImagePlus, Video, Send, Loader2, CheckCircle2, AlertCircle, Save } from "lucide-react"
+import {
+  ImagePlus,
+  Video,
+  Send,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Save,
+  Film,
+  Clapperboard,
+} from "lucide-react"
 import { PlatformSelector, platforms } from "@/components/compose/platform-selector"
 import { MediaUpload } from "@/components/compose/media-upload"
 import { CharCounter } from "@/components/compose/char-counter"
@@ -19,6 +29,8 @@ interface ComposeFormProps {
   onPlatformsChange: (platforms: string[]) => void
   mediaFiles: MediaFile[]
   onMediaFilesChange: (files: MediaFile[]) => void
+  videoMode: VideoMode
+  onVideoModeChange: (mode: VideoMode) => void
   onPost?: () => void
   onSaveDraft?: () => void
   posting?: boolean
@@ -33,6 +45,8 @@ export function ComposeForm({
   onPlatformsChange,
   mediaFiles,
   onMediaFilesChange,
+  videoMode,
+  onVideoModeChange,
   onPost,
   onSaveDraft,
   posting,
@@ -47,6 +61,7 @@ export function ComposeForm({
   const maxChars = charLimits.length ? Math.min(...charLimits) : INSTAGRAM_MAX
 
   const hasContent = content.trim() || mediaFiles.length > 0
+  const isUploading = mediaFiles.some((f) => f.uploading)
 
   return (
     <div className="flex flex-1 flex-col">
@@ -112,6 +127,36 @@ export function ComposeForm({
 
       <MediaUpload mediaFiles={mediaFiles} onChange={onMediaFilesChange} />
 
+      {/* Video Mode Toggle */}
+      {mediaFiles.some((f) => f.type === "video") && (
+        <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-1">
+          <button
+            onClick={() => onVideoModeChange("reel")}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+              videoMode === "reel"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Clapperboard className="size-3.5" />
+            Reel
+          </button>
+          <button
+            onClick={() => onVideoModeChange("video")}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+              videoMode === "video"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Film className="size-3.5" />
+            Video
+          </button>
+        </div>
+      )}
+
       {/* Post Result */}
       {postResult && (
         <div
@@ -144,7 +189,7 @@ export function ComposeForm({
         <Button
           size="lg"
           className="flex-1 gap-2 shadow-sm"
-          disabled={!hasContent || posting || selectedPlatforms.length === 0}
+          disabled={!hasContent || posting || isUploading || selectedPlatforms.length === 0}
           onClick={onPost}
         >
           {posting ? (
@@ -158,7 +203,7 @@ export function ComposeForm({
           variant="outline"
           size="lg"
           className="gap-2"
-          disabled={!hasContent || posting || savingDraft}
+          disabled={!hasContent || posting || savingDraft || isUploading}
           onClick={onSaveDraft}
         >
           {savingDraft ? (

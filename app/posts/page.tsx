@@ -54,10 +54,7 @@ function StatusBadge({ status }: { status: string }) {
       )
     default:
       return (
-        <Badge
-          variant="outline"
-          className="gap-1 text-muted-foreground"
-        >
+        <Badge variant="outline" className="gap-1 text-muted-foreground">
           <AlertTriangle className="size-3" />
           Draft
         </Badge>
@@ -83,9 +80,7 @@ function PlatformIcons({ platforms }: { platforms: string[] }) {
 }
 
 function timeAgo(dateStr: string) {
-  const seconds = Math.floor(
-    (Date.now() - new Date(dateStr).getTime()) / 1000
-  )
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
   if (seconds < 60) return "Just now"
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) return `${minutes}m ago`
@@ -167,11 +162,19 @@ export default function PostsPage() {
                   {/* Media thumbnail */}
                   {mediaUrls.length > 0 ? (
                     <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-border">
-                      <img
-                        src={mediaUrls[0]}
-                        alt=""
-                        className="size-full object-cover"
-                      />
+                      {mediaUrls[0].match(/\.(mp4|mov|webm|avi)/) ? (
+                        <video
+                          src={mediaUrls[0]}
+                          muted
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <img
+                          src={mediaUrls[0]}
+                          alt=""
+                          className="size-full object-cover"
+                        />
+                      )}
                     </div>
                   ) : (
                     <div className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/30">
@@ -205,9 +208,7 @@ export default function PostsPage() {
                         variant="ghost"
                         size="icon"
                         className="size-8 text-muted-foreground hover:text-foreground"
-                        onClick={() =>
-                          router.push(`/?draft=${post.id}`)
-                        }
+                        onClick={() => router.push(`/?draft=${post.id}`)}
                       >
                         <PenSquare className="size-3.5" />
                       </Button>

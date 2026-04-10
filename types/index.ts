@@ -1,8 +1,12 @@
+export type VideoMode = "reel" | "video"
+
 export interface MediaFile {
   id: string
-  file: File
+  file?: File
   preview: string
   type: "image" | "video"
+  uploadedUrl?: string
+  uploading?: boolean
 }
 
 export interface AccountInfo {

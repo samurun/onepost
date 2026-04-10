@@ -91,14 +91,31 @@ export async function postToFacebookPage(
   pageId: string,
   pageAccessToken: string,
   message: string,
-  imageUrl?: string
+  mediaUrl?: string,
+  mediaType: "image" | "video" = "image"
 ) {
-  const endpoint = imageUrl
-    ? `${GRAPH_API}/${pageId}/photos`
-    : `${GRAPH_API}/${pageId}/feed`
+  // Determine endpoint based on media type
+  let endpoint: string
+  let body: Record<string, string>
 
-  const body: Record<string, string> = { message, access_token: pageAccessToken }
-  if (imageUrl) body.url = imageUrl
+  if (mediaUrl && mediaType === "video") {
+    // Video post — uses /videos endpoint with file_url
+    // Facebook automatically displays vertical videos as Reels
+    endpoint = `${GRAPH_API}/${pageId}/videos`
+    body = {
+      file_url: mediaUrl,
+      description: message,
+      access_token: pageAccessToken,
+    }
+  } else if (mediaUrl) {
+    // Image post
+    endpoint = `${GRAPH_API}/${pageId}/photos`
+    body = { message, url: mediaUrl, access_token: pageAccessToken }
+  } else {
+    // Text-only post
+    endpoint = `${GRAPH_API}/${pageId}/feed`
+    body = { message, access_token: pageAccessToken }
+  }
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -117,17 +134,30 @@ export async function postToInstagram(
   igAccountId: string,
   pageAccessToken: string,
   caption: string,
-  imageUrl: string
+  mediaUrl: string,
+  mediaType: "image" | "video" = "image",
+  videoMode: "reel" | "video" = "reel"
 ) {
   // Step 1: Create media container
+  const containerBody: Record<string, string> = {
+    caption,
+    access_token: pageAccessToken,
+  }
+
+  if (mediaType === "video" && videoMode === "reel") {
+    containerBody.media_type = "REELS"
+    containerBody.video_url = mediaUrl
+  } else if (mediaType === "video") {
+    containerBody.media_type = "VIDEO"
+    containerBody.video_url = mediaUrl
+  } else {
+    containerBody.image_url = mediaUrl
+  }
+
   const containerRes = await fetch(`${GRAPH_API}/${igAccountId}/media`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      image_url: imageUrl,
-      caption,
-      access_token: pageAccessToken,
-    }),
+    body: JSON.stringify(containerBody),
   })
 
   if (!containerRes.ok) {

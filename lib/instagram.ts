@@ -73,8 +73,11 @@ export async function getInstagramProfile(accessToken: string) {
   }>
 }
 
-async function waitForMediaReady(containerId: string, accessToken: string) {
-  const maxAttempts = 10
+async function waitForMediaReady(
+  containerId: string,
+  accessToken: string,
+  maxAttempts = 10
+) {
   for (let i = 0; i < maxAttempts; i++) {
     const res = await fetch(
       `${GRAPH_API}/v22.0/${containerId}?fields=status_code&access_token=${accessToken}`
@@ -97,14 +100,25 @@ export async function postToInstagram(
   igUserId: string,
   accessToken: string,
   caption: string,
-  imageUrl: string
+  mediaUrl: string,
+  mediaType: "image" | "video" = "image",
+  videoMode: "reel" | "video" = "reel"
 ) {
   // Step 1: Create media container
   const containerParams = new URLSearchParams({
-    image_url: imageUrl,
     caption,
     access_token: accessToken,
   })
+
+  if (mediaType === "video" && videoMode === "reel") {
+    containerParams.set("media_type", "REELS")
+    containerParams.set("video_url", mediaUrl)
+  } else if (mediaType === "video") {
+    containerParams.set("media_type", "VIDEO")
+    containerParams.set("video_url", mediaUrl)
+  } else {
+    containerParams.set("image_url", mediaUrl)
+  }
 
   const containerRes = await fetch(
     `${GRAPH_API}/v22.0/${igUserId}/media`,
@@ -122,8 +136,9 @@ export async function postToInstagram(
 
   const containerId = containerData.id
 
-  // Step 2: Wait for media to be ready
-  await waitForMediaReady(containerId, accessToken)
+  // Step 2: Wait for media to be ready (videos/reels need more time)
+  const isVideo = mediaType === "video"
+  await waitForMediaReady(containerId, accessToken, isVideo ? 30 : 10)
 
   // Step 3: Publish
   const publishParams = new URLSearchParams({

@@ -4,11 +4,22 @@ import { postToFacebookPage } from "@/lib/facebook"
 import { postToInstagram } from "@/lib/instagram"
 
 export async function POST(req: NextRequest) {
-  const { content, platforms, mediaUrls } = (await req.json()) as {
-    content: string
-    platforms: string[] // ["facebook", "instagram"]
-    mediaUrls?: string[]
-  }
+  const { content, platforms, mediaUrls, mediaTypes, videoMode } =
+    (await req.json()) as {
+      content: string
+      platforms: string[] // ["facebook", "instagram"]
+      mediaUrls?: string[]
+      mediaTypes?: ("image" | "video")[]
+      videoMode?: "reel" | "video"
+    }
+
+  // Determine the effective media type for posting
+  // If user chose "video" mode (not reel), treat videos as regular video posts
+  const firstMediaType = mediaTypes?.[0] ?? "image"
+  const effectiveMediaType: "image" | "video" =
+    firstMediaType === "video" && videoMode === "video"
+      ? "video"
+      : firstMediaType
 
   if (!content && (!mediaUrls || mediaUrls.length === 0)) {
     return NextResponse.json(
@@ -48,7 +59,8 @@ export async function POST(req: NextRequest) {
           account.platformId,
           account.accessToken,
           content,
-          mediaUrls?.[0]
+          mediaUrls?.[0],
+          firstMediaType
         )
         results[`facebook_${account.platformId}`] = {
           success: true,
@@ -68,7 +80,7 @@ export async function POST(req: NextRequest) {
     if (!mediaUrls || mediaUrls.length === 0) {
       results["instagram"] = {
         success: false,
-        error: "Instagram requires at least one image",
+        error: "Instagram requires at least one image or video",
       }
     } else {
       const igAccounts = await prisma.account.findMany({
@@ -81,7 +93,9 @@ export async function POST(req: NextRequest) {
             account.platformId,
             account.accessToken,
             content,
-            mediaUrls[0]
+            mediaUrls[0],
+            firstMediaType,
+            videoMode
           )
           results[`instagram_${account.platformId}`] = {
             success: true,
