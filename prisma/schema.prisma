@@ -12,8 +12,9 @@ model Account {
   platform  String   // "facebook" | "instagram"
   name      String   // Page name or IG username
   platformId String  // Facebook Page ID or IG Business Account ID
-  accessToken String
-  tokenExpiry DateTime?
+  accessToken  String
+  refreshToken String?
+  tokenExpiry  DateTime?
   avatarUrl  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

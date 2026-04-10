@@ -83,8 +83,6 @@ async function waitForMediaReady(
       `${GRAPH_API}/v22.0/${containerId}?fields=status_code&access_token=${accessToken}`
     )
     const data = await res.json()
-    console.log(`IG media status (attempt ${i + 1}):`, data.status_code)
-
     if (data.status_code === "FINISHED") return
     if (data.status_code === "ERROR") {
       throw new Error("Instagram media processing failed")
@@ -101,8 +99,7 @@ export async function postToInstagram(
   accessToken: string,
   caption: string,
   mediaUrl: string,
-  mediaType: "image" | "video" = "image",
-  videoMode: "reel" | "video" = "reel"
+  mediaType: "image" | "video" = "image"
 ) {
   // Step 1: Create media container
   const containerParams = new URLSearchParams({
@@ -110,11 +107,9 @@ export async function postToInstagram(
     access_token: accessToken,
   })
 
-  if (mediaType === "video" && videoMode === "reel") {
+  if (mediaType === "video") {
+    // Instagram deprecated media_type=VIDEO — all videos must use REELS
     containerParams.set("media_type", "REELS")
-    containerParams.set("video_url", mediaUrl)
-  } else if (mediaType === "video") {
-    containerParams.set("media_type", "VIDEO")
     containerParams.set("video_url", mediaUrl)
   } else {
     containerParams.set("image_url", mediaUrl)

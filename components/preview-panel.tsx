@@ -3,13 +3,15 @@
 import type { MediaFile, AccountInfo } from "@/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Send } from "lucide-react"
-import { FacebookIcon, InstagramIcon } from "@/components/icons"
+import { FacebookIcon, InstagramIcon, YouTubeIcon } from "@/components/icons"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { FacebookPreview } from "@/components/preview/facebook-preview"
 import { InstagramPreview } from "@/components/preview/instagram-preview"
+import { YouTubePreview } from "@/components/preview/youtube-preview"
 
 interface PreviewPanelProps {
   content: string
+  youtubeTitle?: string
   selectedPlatforms: string[]
   mediaFiles: MediaFile[]
   accounts?: AccountInfo[]
@@ -17,6 +19,7 @@ interface PreviewPanelProps {
 
 export function PreviewPanel({
   content,
+  youtubeTitle,
   selectedPlatforms,
   mediaFiles,
   accounts = [],
@@ -24,6 +27,7 @@ export function PreviewPanel({
   const defaultTab = selectedPlatforms[0] || "facebook"
   const fbAccount = accounts.find((a) => a.platform === "facebook")
   const igAccount = accounts.find((a) => a.platform === "instagram")
+  const ytAccount = accounts.find((a) => a.platform === "youtube")
 
   if (selectedPlatforms.length === 0) {
     return (
@@ -61,6 +65,12 @@ export function PreviewPanel({
               Instagram
             </TabsTrigger>
           )}
+          {selectedPlatforms.includes("youtube") && (
+            <TabsTrigger value="youtube" className="gap-1.5 text-xs">
+              <YouTubeIcon className="size-3.5 text-red-500" />
+              YouTube
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <ScrollArea className="flex-1">
@@ -76,6 +86,14 @@ export function PreviewPanel({
               content={content}
               mediaFiles={mediaFiles}
               account={igAccount}
+            />
+          </TabsContent>
+          <TabsContent value="youtube">
+            <YouTubePreview
+              content={content}
+              youtubeTitle={youtubeTitle}
+              mediaFiles={mediaFiles}
+              account={ytAccount}
             />
           </TabsContent>
         </ScrollArea>

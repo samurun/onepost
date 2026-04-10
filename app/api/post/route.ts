@@ -2,24 +2,20 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { postToFacebookPage } from "@/lib/facebook"
 import { postToInstagram } from "@/lib/instagram"
+import { uploadToYouTube, refreshYouTubeToken } from "@/lib/youtube"
 
 export async function POST(req: NextRequest) {
-  const { content, platforms, mediaUrls, mediaTypes, videoMode } =
+  const { content, platforms, mediaUrls, mediaTypes, videoMode, youtubeTitle } =
     (await req.json()) as {
       content: string
-      platforms: string[] // ["facebook", "instagram"]
+      platforms: string[] // ["facebook", "instagram", "youtube"]
       mediaUrls?: string[]
       mediaTypes?: ("image" | "video")[]
       videoMode?: "reel" | "video"
+      youtubeTitle?: string
     }
 
-  // Determine the effective media type for posting
-  // If user chose "video" mode (not reel), treat videos as regular video posts
   const firstMediaType = mediaTypes?.[0] ?? "image"
-  const effectiveMediaType: "image" | "video" =
-    firstMediaType === "video" && videoMode === "video"
-      ? "video"
-      : firstMediaType
 
   if (!content && (!mediaUrls || mediaUrls.length === 0)) {
     return NextResponse.json(
@@ -94,8 +90,7 @@ export async function POST(req: NextRequest) {
             account.accessToken,
             content,
             mediaUrls[0],
-            firstMediaType,
-            videoMode
+            firstMediaType
           )
           results[`instagram_${account.platformId}`] = {
             success: true,
@@ -111,6 +106,72 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Post to YouTube
+  if (platforms.includes("youtube")) {
+    const videoUrl = mediaUrls?.find((_, i) => mediaTypes?.[i] === "video")
+    if (!videoUrl) {
+      results["youtube"] = {
+        success: false,
+        error: "YouTube requires a video",
+      }
+    } else {
+      const ytAccounts = await prisma.account.findMany({
+        where: { platform: "youtube" },
+      })
+
+      for (const account of ytAccounts) {
+        try {
+          // Refresh token if expired
+          let accessToken = account.accessToken
+          if (
+            account.tokenExpiry &&
+            new Date(account.tokenExpiry) < new Date()
+          ) {
+            if (!account.refreshToken) {
+              throw new Error("YouTube token expired — please reconnect")
+            }
+            const refreshed = await refreshYouTubeToken(account.refreshToken)
+            accessToken = refreshed.access_token
+            await prisma.account.update({
+              where: { id: account.id },
+              data: {
+                accessToken,
+                tokenExpiry: new Date(
+                  Date.now() + refreshed.expires_in * 1000
+                ),
+              },
+            })
+          }
+
+          const isShorts = videoMode === "reel"
+          let title = youtubeTitle || "Untitled"
+
+          if (isShorts && !title.includes("#Shorts")) {
+            title = `${title} #Shorts`
+          }
+
+          const result = await uploadToYouTube(
+            accessToken,
+            title,
+            content,
+            videoUrl,
+            "public",
+            isShorts
+          )
+          results[`youtube_${account.platformId}`] = {
+            success: true,
+            postId: result.id,
+          }
+        } catch (err) {
+          results[`youtube_${account.platformId}`] = {
+            success: false,
+            error: err instanceof Error ? err.message : "Unknown error",
+          }
+        }
+      }
+    }
+  }
+
   // Update post status
   const allSuccess = Object.values(results).every((r) => r.success)
   const anySuccess = Object.values(results).some((r) => r.success)
@@ -118,7 +179,7 @@ export async function POST(req: NextRequest) {
   await prisma.post.update({
     where: { id: post.id },
     data: {
-      status: allSuccess ? "published" : anySuccess ? "published" : "failed",
+      status: allSuccess ? "published" : anySuccess ? "partial" : "failed",
       results: JSON.stringify(results),
       publishedAt: anySuccess ? new Date() : null,
     },

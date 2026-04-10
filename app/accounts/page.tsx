@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { FacebookIcon, InstagramIcon } from "@/components/icons"
+import { FacebookIcon, InstagramIcon, YouTubeIcon } from "@/components/icons"
 import {
   ExternalLink,
   Trash2,
@@ -76,6 +76,7 @@ export default function AccountsPage() {
 
   const fbAccounts = accounts.filter((a) => a.platform === "facebook")
   const igAccounts = accounts.filter((a) => a.platform === "instagram")
+  const ytAccounts = accounts.filter((a) => a.platform === "youtube")
 
   return (
     <div className="flex h-screen bg-background">
@@ -108,7 +109,7 @@ export default function AccountsPage() {
         )}
 
         {/* Connect Buttons */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2">
+        <div className="mb-8 grid gap-4 sm:grid-cols-3">
           <Card className="transition-shadow hover:shadow-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2.5 text-base">
@@ -157,6 +158,29 @@ export default function AccountsPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2.5 text-base">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-red-500/10">
+                  <YouTubeIcon className="size-4 text-red-500" />
+                </div>
+                YouTube
+              </CardTitle>
+              <CardDescription>
+                Upload videos to your YouTube channel.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="gap-2 bg-red-500 hover:bg-red-600">
+                <a href="/api/auth/youtube">
+                  <YouTubeIcon className="size-4" />
+                  {ytAccounts.length > 0 ? "Reconnect" : "Connect"}
+                  <ExternalLink className="size-3" />
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Connected Accounts */}
@@ -178,7 +202,7 @@ export default function AccountsPage() {
                 No accounts connected yet
               </p>
               <p className="mt-1 text-xs text-muted-foreground/60">
-                Connect Facebook or Instagram above to get started
+                Connect a platform above to get started
               </p>
             </div>
           ) : (
@@ -256,6 +280,54 @@ export default function AccountsPage() {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Business · Active
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() =>
+                            disconnectAccount(account.id, account.name)
+                          }
+                          disabled={deleting === account.id}
+                        >
+                          {deleting === account.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* YouTube Channels */}
+              {ytAccounts.length > 0 && (
+                <div>
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+                    <YouTubeIcon className="size-3.5 text-red-500" />
+                    YouTube
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {ytAccounts.map((account) => (
+                      <div
+                        key={account.id}
+                        className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm"
+                      >
+                        <Avatar className="size-10 ring-1 ring-border">
+                          <AvatarImage src={account.avatarUrl || undefined} />
+                          <AvatarFallback className="bg-red-500/10 text-sm font-semibold text-red-500">
+                            {account.name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {account.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Channel · Active
                           </p>
                         </div>
                         <Button
