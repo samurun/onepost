@@ -109,6 +109,15 @@ components/
 - Instagram posting logic lives only in `lib/instagram.ts` (not duplicated in `lib/facebook.ts`)
 - Video download has **60s timeout** (`AbortSignal.timeout`) for both YouTube and TikTok
 
+## Platform integration details
+
+See `.claude/context/` for detailed API docs, OAuth flows, and env vars per platform:
+
+- [Facebook & Instagram](.claude/context/facebook-instagram-integration.md) — Meta Graph API, separate OAuth apps, container-based IG posting
+- [YouTube](.claude/context/youtube-integration.md) — Google OAuth, resumable upload, Shorts support
+- [TikTok](.claude/context/tiktok-integration.md) — 🚧 WIP, Content Posting API, needs app audit
+- [Supabase migration](.claude/context/supabase-migration.md) — PostgreSQL setup, connection pooling
+
 ## Code style
 
 - Prettier: no semicolons, double quotes, 2-space indent, trailing commas (es5)
