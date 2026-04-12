@@ -2,7 +2,7 @@
 
 import { useRef } from "react"
 import { cn } from "@/lib/utils"
-import type { MediaFile, PostResult, VideoMode } from "@/types"
+import type { MediaFile, PostResult, VideoMode, Privacy } from "@/types"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,6 +15,9 @@ import {
   Save,
   Film,
   Clapperboard,
+  Globe,
+  EyeOff,
+  Link2,
 } from "lucide-react"
 import {
   PlatformSelector,
@@ -36,6 +39,8 @@ interface ComposeFormProps {
   onMediaFilesChange: (files: MediaFile[]) => void
   videoMode: VideoMode
   onVideoModeChange: (mode: VideoMode) => void
+  privacy: Privacy
+  onPrivacyChange: (privacy: Privacy) => void
   onPost?: () => void
   onSaveDraft?: () => void
   posting?: boolean
@@ -54,6 +59,8 @@ export function ComposeForm({
   onMediaFilesChange,
   videoMode,
   onVideoModeChange,
+  privacy,
+  onPrivacyChange,
   onPost,
   onSaveDraft,
   posting,
@@ -178,6 +185,33 @@ export function ComposeForm({
             <Film className="size-3.5" />
             Video
           </button>
+        </div>
+      )}
+
+      {/* Privacy Selector — show when YouTube is selected */}
+      {selectedPlatforms.includes("youtube") && (
+        <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-1">
+          {(
+            [
+              { value: "public", label: "Public", icon: Globe },
+              { value: "unlisted", label: "Unlisted", icon: Link2 },
+              { value: "private", label: "Private", icon: EyeOff },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => onPrivacyChange(opt.value)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                privacy === opt.value
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <opt.icon className="size-3.5" />
+              {opt.label}
+            </button>
+          ))}
         </div>
       )}
 

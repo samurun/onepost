@@ -5,15 +5,23 @@ import { postToInstagram } from "@/lib/instagram"
 import { uploadToYouTube, refreshYouTubeToken } from "@/lib/youtube"
 
 export async function POST(req: NextRequest) {
-  const { content, platforms, mediaUrls, mediaTypes, videoMode, youtubeTitle } =
-    (await req.json()) as {
-      content: string
-      platforms: string[] // ["facebook", "instagram", "youtube"]
-      mediaUrls?: string[]
-      mediaTypes?: ("image" | "video")[]
-      videoMode?: "reel" | "video"
-      youtubeTitle?: string
-    }
+  const {
+    content,
+    platforms,
+    mediaUrls,
+    mediaTypes,
+    videoMode,
+    youtubeTitle,
+    privacy,
+  } = (await req.json()) as {
+    content: string
+    platforms: string[] // ["facebook", "instagram", "youtube"]
+    mediaUrls?: string[]
+    mediaTypes?: ("image" | "video")[]
+    videoMode?: "reel" | "video"
+    youtubeTitle?: string
+    privacy?: "public" | "unlisted" | "private"
+  }
 
   const firstMediaType = mediaTypes?.[0] ?? "image"
 
@@ -155,7 +163,7 @@ export async function POST(req: NextRequest) {
             title,
             content,
             videoUrl,
-            "public",
+            privacy || "public",
             isShorts
           )
           results[`youtube_${account.platformId}`] = {

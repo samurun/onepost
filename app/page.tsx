@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import type { MediaFile, AccountInfo, PostResult, VideoMode } from "@/types"
+import type { MediaFile, AccountInfo, PostResult, VideoMode, Privacy } from "@/types"
 import { isVideoUrl } from "@/lib/utils"
 import { Sidebar } from "@/components/sidebar"
 import { ComposeForm } from "@/components/compose-form"
@@ -29,6 +29,7 @@ function PageContent() {
   const [accounts, setAccounts] = useState<AccountInfo[]>([])
   const [draftId, setDraftId] = useState<string | null>(null)
   const [videoMode, setVideoMode] = useState<VideoMode>("reel")
+  const [privacy, setPrivacy] = useState<Privacy>("public")
   const [posting, setPosting] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
   const [postResult, setPostResult] = useState<PostResult | null>(null)
@@ -194,6 +195,7 @@ function PageContent() {
           mediaTypes: mediaTypes.length > 0 ? mediaTypes : undefined,
           videoMode,
           youtubeTitle: youtubeTitle || undefined,
+          privacy,
         }),
       })
 
@@ -230,7 +232,7 @@ function PageContent() {
     } finally {
       setPosting(false)
     }
-  }, [content, selectedPlatforms, mediaFiles, videoMode, youtubeTitle])
+  }, [content, selectedPlatforms, mediaFiles, videoMode, youtubeTitle, privacy])
 
   return (
     <div className="flex h-screen bg-background">
@@ -258,6 +260,8 @@ function PageContent() {
             onMediaFilesChange={handleMediaFilesChange}
             videoMode={videoMode}
             onVideoModeChange={setVideoMode}
+            privacy={privacy}
+            onPrivacyChange={setPrivacy}
             onPost={handlePost}
             onSaveDraft={handleSaveDraft}
             posting={posting}
