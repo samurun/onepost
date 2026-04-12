@@ -8,17 +8,28 @@ cloudinary.config({
 })
 
 export async function POST() {
+  const apiSecret = process.env.CLOUDINARY_API_SECRET
+  const apiKey = process.env.CLOUDINARY_API_KEY
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME
+
+  if (!apiSecret || !apiKey || !cloudName) {
+    return NextResponse.json(
+      { error: "Cloudinary is not configured" },
+      { status: 500 }
+    )
+  }
+
   const timestamp = Math.round(Date.now() / 1000)
   const signature = cloudinary.utils.api_sign_request(
     { timestamp, folder: "onepost" },
-    process.env.CLOUDINARY_API_SECRET!
+    apiSecret
   )
 
   return NextResponse.json({
     signature,
     timestamp,
     folder: "onepost",
-    apiKey: process.env.CLOUDINARY_API_KEY,
-    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey,
+    cloudName,
   })
 }

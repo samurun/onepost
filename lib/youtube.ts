@@ -101,10 +101,13 @@ export async function uploadToYouTube(
   privacyStatus: "public" | "unlisted" | "private" = "public",
   isShorts = false
 ) {
-  // Download video from Cloudinary URL
-  const videoRes = await fetch(videoUrl)
-  if (!videoRes.ok) throw new Error("Failed to fetch video from URL")
+  // Download video from Cloudinary URL (60s timeout)
+  const videoRes = await fetch(videoUrl, {
+    signal: AbortSignal.timeout(60_000),
+  })
+  if (!videoRes.ok) throw new Error("YouTube: failed to download video from URL")
   const videoBlob = await videoRes.blob()
+  if (videoBlob.size === 0) throw new Error("YouTube: downloaded video is empty")
 
   // YouTube resumable upload — Step 1: initiate
   const metadata: Record<string, unknown> = {

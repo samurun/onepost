@@ -12,7 +12,12 @@ import {
 } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { FacebookIcon, InstagramIcon, YouTubeIcon } from "@/components/icons"
+import {
+  FacebookIcon,
+  InstagramIcon,
+  YouTubeIcon,
+  TikTokIcon,
+} from "@/components/icons"
 import {
   ExternalLink,
   Trash2,
@@ -22,6 +27,17 @@ import {
   Unplug,
 } from "lucide-react"
 import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface Account {
   id: string
@@ -54,6 +70,8 @@ export default function AccountsPage() {
       const res = await fetch("/api/accounts")
       const data = await res.json()
       setAccounts(data)
+    } catch {
+      toast.error("Failed to load accounts")
     } finally {
       setLoading(false)
     }
@@ -69,6 +87,8 @@ export default function AccountsPage() {
       })
       setAccounts((prev) => prev.filter((a) => a.id !== id))
       toast.success(`Disconnected ${name}`)
+    } catch {
+      toast.error("Failed to disconnect account")
     } finally {
       setDeleting(null)
     }
@@ -77,12 +97,13 @@ export default function AccountsPage() {
   const fbAccounts = accounts.filter((a) => a.platform === "facebook")
   const igAccounts = accounts.filter((a) => a.platform === "instagram")
   const ytAccounts = accounts.filter((a) => a.platform === "youtube")
+  const ttAccounts = accounts.filter((a) => a.platform === "tiktok")
 
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
 
-      <main className="flex flex-1 flex-col overflow-auto p-6 lg:p-8">
+      <main className="flex flex-1 flex-col overflow-auto p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
           <h1 className="text-lg font-semibold tracking-tight">Accounts</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -109,7 +130,7 @@ export default function AccountsPage() {
         )}
 
         {/* Connect Buttons */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="transition-shadow hover:shadow-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2.5 text-base">
@@ -181,6 +202,29 @@ export default function AccountsPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2.5 text-base">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-foreground/10">
+                  <TikTokIcon className="size-4" />
+                </div>
+                TikTok
+              </CardTitle>
+              <CardDescription>
+                Post videos to your TikTok account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="gap-2 bg-foreground hover:bg-foreground/90">
+                <a href="/api/auth/tiktok">
+                  <TikTokIcon className="size-4" />
+                  {ttAccounts.length > 0 ? "Reconnect" : "Connect"}
+                  <ExternalLink className="size-3" />
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Connected Accounts */}
@@ -234,21 +278,43 @@ export default function AccountsPage() {
                             Page · Active
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() =>
-                            disconnectAccount(account.id, account.name)
-                          }
-                          disabled={deleting === account.id}
-                        >
-                          {deleting === account.id ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="size-3.5" />
-                          )}
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                              disabled={deleting === account.id}
+                            >
+                              {deleting === account.id ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="size-3.5" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Disconnect {account.name}?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove the account connection. You can
+                                reconnect it later.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  disconnectAccount(account.id, account.name)
+                                }
+                              >
+                                Disconnect
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     ))}
                   </div>
@@ -282,21 +348,43 @@ export default function AccountsPage() {
                             Business · Active
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() =>
-                            disconnectAccount(account.id, account.name)
-                          }
-                          disabled={deleting === account.id}
-                        >
-                          {deleting === account.id ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="size-3.5" />
-                          )}
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                              disabled={deleting === account.id}
+                            >
+                              {deleting === account.id ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="size-3.5" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Disconnect {account.name}?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove the account connection. You can
+                                reconnect it later.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  disconnectAccount(account.id, account.name)
+                                }
+                              >
+                                Disconnect
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     ))}
                   </div>
@@ -330,21 +418,113 @@ export default function AccountsPage() {
                             Channel · Active
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() =>
-                            disconnectAccount(account.id, account.name)
-                          }
-                          disabled={deleting === account.id}
-                        >
-                          {deleting === account.id ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="size-3.5" />
-                          )}
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                              disabled={deleting === account.id}
+                            >
+                              {deleting === account.id ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="size-3.5" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Disconnect {account.name}?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove the account connection. You can
+                                reconnect it later.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  disconnectAccount(account.id, account.name)
+                                }
+                              >
+                                Disconnect
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TikTok Accounts */}
+              {ttAccounts.length > 0 && (
+                <div>
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+                    <TikTokIcon className="size-3.5" />
+                    TikTok
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {ttAccounts.map((account) => (
+                      <div
+                        key={account.id}
+                        className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm"
+                      >
+                        <Avatar className="size-10 ring-1 ring-border">
+                          <AvatarImage src={account.avatarUrl || undefined} />
+                          <AvatarFallback className="bg-foreground/10 text-sm font-semibold">
+                            {account.name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            @{account.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Creator · Active
+                          </p>
+                        </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                              disabled={deleting === account.id}
+                            >
+                              {deleting === account.id ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="size-3.5" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Disconnect {account.name}?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove the account connection. You can
+                                reconnect it later.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  disconnectAccount(account.id, account.name)
+                                }
+                              >
+                                Disconnect
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     ))}
                   </div>
