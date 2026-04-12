@@ -58,13 +58,14 @@ export function MediaUpload({ mediaFiles, onChange }: MediaUploadProps) {
       />
 
       {mediaFiles.length === 0 ? (
-        <div
+        <button
+          type="button"
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           className={cn(
-            "mt-4 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-5 transition-all",
+            "mt-4 flex w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-5 text-left transition-colors",
             isDragging
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/15 hover:border-muted-foreground/30 hover:bg-muted/30"
@@ -79,7 +80,7 @@ export function MediaUpload({ mediaFiles, onChange }: MediaUploadProps) {
               Drag & drop or click — JPG, PNG, MP4
             </p>
           </div>
-        </div>
+        </button>
       ) : (
         <div className="mt-4">
           <div className="grid grid-cols-4 gap-2">
@@ -102,6 +103,8 @@ export function MediaUpload({ mediaFiles, onChange }: MediaUploadProps) {
                 )}
                 <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
                 <button
+                  type="button"
+                  aria-label="Remove media"
                   onClick={() => removeMedia(file.id)}
                   className="absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100"
                 >
@@ -120,6 +123,8 @@ export function MediaUpload({ mediaFiles, onChange }: MediaUploadProps) {
               </div>
             ))}
             <button
+              type="button"
+              aria-label="Add more media"
               onClick={() => fileInputRef.current?.click()}
               className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/15 transition-colors hover:border-muted-foreground/30 hover:bg-muted/30"
             >

@@ -44,7 +44,7 @@ export function FacebookPreview({
             <Globe className="size-3" />
           </div>
         </div>
-        <MoreHorizontal className="size-5 text-muted-foreground/50" />
+        <MoreHorizontal className="size-5 text-muted-foreground/50" aria-hidden="true" />
       </div>
 
       {/* Content */}
@@ -115,16 +115,16 @@ export function FacebookPreview({
 
       {/* Reactions */}
       <div className="flex border-t border-border">
-        <button className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-blue-500">
-          <ThumbsUp className="size-4" />
+        <button type="button" className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-blue-500">
+          <ThumbsUp className="size-4" aria-hidden="true" />
           Like
         </button>
-        <button className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
-          <MessageCircle className="size-4" />
+        <button type="button" className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
+          <MessageCircle className="size-4" aria-hidden="true" />
           Comment
         </button>
-        <button className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
-          <Share2 className="size-4" />
+        <button type="button" className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
+          <Share2 className="size-4" aria-hidden="true" />
           Share
         </button>
       </div>

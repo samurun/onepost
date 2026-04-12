@@ -2,7 +2,13 @@
 
 import type { MediaFile, AccountInfo } from "@/types"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ThumbsUp, ThumbsDown, Share2, MoreVertical } from "lucide-react"
+import {
+  ThumbsUp,
+  ThumbsDown,
+  Share2,
+  MoreVertical,
+  AlertTriangle,
+} from "lucide-react"
 
 interface YouTubePreviewProps {
   content: string
@@ -30,17 +36,12 @@ export function YouTubePreview({
             src={videoFile.preview}
             className="size-full object-contain"
           />
-        ) : mediaFiles.length > 0 ? (
-          <img
-            src={mediaFiles[0].preview}
-            alt=""
-            className="size-full object-contain"
-          />
         ) : (
           <div className="flex size-full items-center justify-center">
             <div className="text-center text-white/40">
-              <p className="text-sm font-medium">No video</p>
-              <p className="mt-0.5 text-xs">Upload a video to preview</p>
+              <AlertTriangle className="mx-auto mb-1.5 size-5" />
+              <p className="text-sm font-medium">Video required</p>
+              <p className="mt-0.5 text-xs">YouTube only supports video uploads</p>
             </div>
           </div>
         )}
@@ -64,22 +65,22 @@ export function YouTubePreview({
               0 views · Just now
             </p>
           </div>
-          <MoreVertical className="size-4 text-muted-foreground/50" />
+          <MoreVertical className="size-4 text-muted-foreground/50" aria-hidden="true" />
         </div>
       </div>
 
       {/* Actions */}
       <div className="flex border-t border-border">
-        <button className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
-          <ThumbsUp className="size-4" />
+        <button type="button" className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
+          <ThumbsUp className="size-4" aria-hidden="true" />
           Like
         </button>
-        <button className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
-          <ThumbsDown className="size-4" />
+        <button type="button" className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
+          <ThumbsDown className="size-4" aria-hidden="true" />
           Dislike
         </button>
-        <button className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
-          <Share2 className="size-4" />
+        <button type="button" className="flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50">
+          <Share2 className="size-4" aria-hidden="true" />
           Share
         </button>
       </div>
