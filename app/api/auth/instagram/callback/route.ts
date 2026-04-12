@@ -28,9 +28,6 @@ export async function GET(req: NextRequest) {
     const profile = await getInstagramProfile(longToken)
     const igUserId = profile.user_id
 
-    console.log("Instagram profile:", JSON.stringify(profile))
-    console.log("Using IG user ID:", igUserId)
-
     // 4. Save account (use profile user_id, not token exchange user_id)
     await prisma.account.upsert({
       where: {

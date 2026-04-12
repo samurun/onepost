@@ -1,4 +1,5 @@
 export type VideoMode = "reel" | "video"
+export type Privacy = "public" | "unlisted" | "private"
 
 export interface MediaFile {
   id: string

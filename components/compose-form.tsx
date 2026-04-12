@@ -2,7 +2,7 @@
 
 import { useRef } from "react"
 import { cn } from "@/lib/utils"
-import type { MediaFile, PostResult, VideoMode } from "@/types"
+import type { MediaFile, PostResult, VideoMode, Privacy } from "@/types"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,8 +15,14 @@ import {
   Save,
   Film,
   Clapperboard,
+  Globe,
+  EyeOff,
+  Link2,
 } from "lucide-react"
-import { PlatformSelector, platforms } from "@/components/compose/platform-selector"
+import {
+  PlatformSelector,
+  platforms as platformConfigs,
+} from "@/components/compose/platform-selector"
 import { MediaUpload } from "@/components/compose/media-upload"
 import { CharCounter } from "@/components/compose/char-counter"
 
@@ -25,12 +31,16 @@ const INSTAGRAM_MAX = 2200
 interface ComposeFormProps {
   content: string
   onContentChange: (content: string) => void
+  youtubeTitle: string
+  onYoutubeTitleChange: (title: string) => void
   selectedPlatforms: string[]
   onPlatformsChange: (platforms: string[]) => void
   mediaFiles: MediaFile[]
   onMediaFilesChange: (files: MediaFile[]) => void
   videoMode: VideoMode
   onVideoModeChange: (mode: VideoMode) => void
+  privacy: Privacy
+  onPrivacyChange: (privacy: Privacy) => void
   onPost?: () => void
   onSaveDraft?: () => void
   posting?: boolean
@@ -41,12 +51,16 @@ interface ComposeFormProps {
 export function ComposeForm({
   content,
   onContentChange,
+  youtubeTitle,
+  onYoutubeTitleChange,
   selectedPlatforms,
   onPlatformsChange,
   mediaFiles,
   onMediaFilesChange,
   videoMode,
   onVideoModeChange,
+  privacy,
+  onPrivacyChange,
   onPost,
   onSaveDraft,
   posting,
@@ -56,7 +70,7 @@ export function ComposeForm({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const charLimits = selectedPlatforms
-    .map((p) => platforms.find((pl) => pl.id === p)?.maxChars)
+    .map((p) => platformConfigs.find((pl) => pl.id === p)?.maxChars)
     .filter((v) => v !== undefined)
   const maxChars = charLimits.length ? Math.min(...charLimits) : INSTAGRAM_MAX
 
@@ -70,12 +84,29 @@ export function ComposeForm({
         onChange={onPlatformsChange}
       />
 
+      {/* YouTube Title */}
+      {selectedPlatforms.includes("youtube") && (
+        <div className="mb-3">
+          <input
+            value={youtubeTitle}
+            onChange={(e) => onYoutubeTitleChange(e.target.value)}
+            placeholder="YouTube title"
+            maxLength={100}
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium shadow-sm transition-shadow placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/20"
+          />
+        </div>
+      )}
+
       {/* Text Area Card */}
       <div className="relative rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-ring/20">
         <Textarea
           value={content}
           onChange={(e) => onContentChange(e.target.value)}
-          placeholder="What's on your mind?"
+          placeholder={
+            selectedPlatforms.includes("youtube")
+              ? "Description / caption..."
+              : "What's on your mind?"
+          }
           className="min-h-32 resize-none border-none bg-transparent text-base leading-relaxed shadow-none field-sizing-fixed focus-visible:ring-0"
         />
 
@@ -157,30 +188,91 @@ export function ComposeForm({
         </div>
       )}
 
-      {/* Post Result */}
-      {postResult && (
-        <div
-          className={cn(
-            "mt-4 flex items-center gap-2.5 rounded-lg border p-3 text-sm",
-            postResult.status === "published"
-              ? "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400"
-              : postResult.status === "partial"
-                ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
-                : "border-destructive/30 bg-destructive/10 text-destructive"
-          )}
-        >
-          {postResult.status === "published" ? (
-            <CheckCircle2 className="size-4 shrink-0" />
-          ) : (
-            <AlertCircle className="size-4 shrink-0" />
-          )}
-          <span className="font-medium">
-            {postResult.status === "published"
-              ? "Published successfully to all platforms!"
-              : postResult.status === "partial"
-                ? "Some platforms failed. Check your connections."
-                : "Failed to post. Please try again."}
-          </span>
+      {/* Privacy Selector — show when YouTube is selected */}
+      {selectedPlatforms.includes("youtube") && (
+        <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-1">
+          {(
+            [
+              { value: "public", label: "Public", icon: Globe },
+              { value: "unlisted", label: "Unlisted", icon: Link2 },
+              { value: "private", label: "Private", icon: EyeOff },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => onPrivacyChange(opt.value)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                privacy === opt.value
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <opt.icon className="size-3.5" />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Publishing Progress */}
+      {posting && (
+        <div className="mt-4 space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
+            Publishing...
+          </p>
+          {selectedPlatforms.map((pId) => {
+            const pConfig = platformConfigs.find((p) => p.id === pId)
+            if (!pConfig) return null
+            return (
+              <div
+                key={pId}
+                className="flex items-center gap-2.5 text-sm"
+              >
+                <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+                <pConfig.icon className={cn("size-3.5", pConfig.color)} />
+                <span className="text-muted-foreground">
+                  {pConfig.label}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Post Result — per platform */}
+      {!posting && postResult && (
+        <div className="mt-4 space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
+          {Object.entries(postResult.results).map(([key, result]) => {
+            const platformId = key.split("_")[0]
+            const pConfig = platformConfigs.find((p) => p.id === platformId)
+            return (
+              <div key={key} className="flex items-center gap-2.5 text-sm">
+                {result.success ? (
+                  <CheckCircle2 className="size-3.5 text-green-500" />
+                ) : (
+                  <AlertCircle className="size-3.5 text-destructive" />
+                )}
+                {pConfig && (
+                  <pConfig.icon className={cn("size-3.5", pConfig.color)} />
+                )}
+                <span
+                  className={
+                    result.success
+                      ? "text-foreground"
+                      : "text-destructive"
+                  }
+                >
+                  {pConfig?.label || platformId}
+                </span>
+                {result.error && (
+                  <span className="truncate text-xs text-muted-foreground">
+                    — {result.error}
+                  </span>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

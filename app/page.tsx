@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import type { MediaFile, AccountInfo, PostResult, VideoMode } from "@/types"
+import type { MediaFile, AccountInfo, PostResult, VideoMode, Privacy } from "@/types"
+import { isVideoUrl } from "@/lib/utils"
 import { Sidebar } from "@/components/sidebar"
 import { ComposeForm } from "@/components/compose-form"
 import { PreviewPanel } from "@/components/preview-panel"
@@ -24,9 +25,11 @@ function PageContent() {
     "instagram",
   ])
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
+  const [youtubeTitle, setYoutubeTitle] = useState("")
   const [accounts, setAccounts] = useState<AccountInfo[]>([])
   const [draftId, setDraftId] = useState<string | null>(null)
   const [videoMode, setVideoMode] = useState<VideoMode>("reel")
+  const [privacy, setPrivacy] = useState<Privacy>("public")
   const [posting, setPosting] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
   const [postResult, setPostResult] = useState<PostResult | null>(null)
@@ -71,7 +74,7 @@ function PageContent() {
               const restored: MediaFile[] = urls.map((url) => ({
                 id: crypto.randomUUID(),
                 preview: url,
-                type: url.match(/\.(mp4|mov|webm|avi)/)
+                type: isVideoUrl(url)
                   ? ("video" as const)
                   : ("image" as const),
                 uploadedUrl: url,
@@ -164,7 +167,7 @@ function PageContent() {
     } finally {
       setSavingDraft(false)
     }
-  }, [content, selectedPlatforms, draftId])
+  }, [content, selectedPlatforms, draftId, mediaFiles])
 
   const handlePost = useCallback(async () => {
     setPosting(true)
@@ -191,6 +194,8 @@ function PageContent() {
           mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
           mediaTypes: mediaTypes.length > 0 ? mediaTypes : undefined,
           videoMode,
+          youtubeTitle: youtubeTitle || undefined,
+          privacy,
         }),
       })
 
@@ -200,12 +205,23 @@ function PageContent() {
       if (data.status === "published") {
         toast.success("Published to all platforms!")
         setContent("")
+        setYoutubeTitle("")
         setMediaFiles([])
         setDraftId(null)
-      } else if (data.status === "partial") {
-        toast.warning("Some platforms failed")
       } else {
-        toast.error("Failed to publish")
+        // Toast each failed platform with its error
+        const results = data.results as Record<
+          string,
+          { success: boolean; error?: string }
+        >
+        for (const [key, result] of Object.entries(results)) {
+          if (!result.success) {
+            const platform = key.split("_")[0]
+            const name =
+              platform.charAt(0).toUpperCase() + platform.slice(1)
+            toast.error(`${name}: ${result.error || "Failed"}`)
+          }
+        }
       }
     } catch {
       setPostResult({
@@ -216,7 +232,7 @@ function PageContent() {
     } finally {
       setPosting(false)
     }
-  }, [content, selectedPlatforms, mediaFiles])
+  }, [content, selectedPlatforms, mediaFiles, videoMode, youtubeTitle, privacy])
 
   return (
     <div className="flex h-screen bg-background">
@@ -236,12 +252,16 @@ function PageContent() {
           <ComposeForm
             content={content}
             onContentChange={setContent}
+            youtubeTitle={youtubeTitle}
+            onYoutubeTitleChange={setYoutubeTitle}
             selectedPlatforms={selectedPlatforms}
             onPlatformsChange={setSelectedPlatforms}
             mediaFiles={mediaFiles}
             onMediaFilesChange={handleMediaFilesChange}
             videoMode={videoMode}
             onVideoModeChange={setVideoMode}
+            privacy={privacy}
+            onPrivacyChange={setPrivacy}
             onPost={handlePost}
             onSaveDraft={handleSaveDraft}
             posting={posting}
@@ -256,6 +276,7 @@ function PageContent() {
         <div className="hidden w-96 shrink-0 overflow-auto bg-muted/20 p-6 lg:block">
           <PreviewPanel
             content={content}
+            youtubeTitle={youtubeTitle}
             selectedPlatforms={selectedPlatforms}
             mediaFiles={mediaFiles}
             accounts={accounts}

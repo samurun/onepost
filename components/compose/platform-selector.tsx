@@ -2,10 +2,15 @@
 
 import { cn } from "@/lib/utils"
 import { CheckCircle2 } from "lucide-react"
-import { FacebookIcon, InstagramIcon } from "@/components/icons"
+import {
+  FacebookIcon,
+  InstagramIcon,
+  YouTubeIcon,
+} from "@/components/icons"
 
 const FACEBOOK_MAX = 63206
 const INSTAGRAM_MAX = 2200
+const YOUTUBE_MAX = 5000
 
 export const platforms = [
   {
@@ -25,6 +30,15 @@ export const platforms = [
     bgColor: "bg-pink-500/10",
     borderColor: "border-pink-500/40",
     maxChars: INSTAGRAM_MAX,
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    icon: YouTubeIcon,
+    color: "text-red-600",
+    bgColor: "bg-red-500/10",
+    borderColor: "border-red-500/40",
+    maxChars: YOUTUBE_MAX,
   },
 ] as const
 

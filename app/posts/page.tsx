@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { Badge } from "@/components/ui/badge"
-import { FacebookIcon, InstagramIcon } from "@/components/icons"
+import { FacebookIcon, InstagramIcon, YouTubeIcon } from "@/components/icons"
+import { isVideoUrl } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   CheckCircle2,
@@ -73,6 +74,11 @@ function PlatformIcons({ platforms }: { platforms: string[] }) {
       {platforms.includes("instagram") && (
         <div className="flex size-5 items-center justify-center rounded bg-pink-500/10">
           <InstagramIcon className="size-3 text-pink-500" />
+        </div>
+      )}
+      {platforms.includes("youtube") && (
+        <div className="flex size-5 items-center justify-center rounded bg-red-500/10">
+          <YouTubeIcon className="size-3 text-red-500" />
         </div>
       )}
     </div>
@@ -162,7 +168,7 @@ export default function PostsPage() {
                   {/* Media thumbnail */}
                   {mediaUrls.length > 0 ? (
                     <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-border">
-                      {mediaUrls[0].match(/\.(mp4|mov|webm|avi)/) ? (
+                      {isVideoUrl(mediaUrls[0]) ? (
                         <video
                           src={mediaUrls[0]}
                           muted

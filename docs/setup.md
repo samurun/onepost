@@ -6,7 +6,8 @@
 - pnpm
 - A Facebook Page (for Facebook posting)
 - An Instagram Business or Creator account (for Instagram posting)
-- A Cloudinary account (for image hosting)
+- A YouTube channel (for YouTube posting)
+- A Cloudinary account (for media hosting)
 
 ## Quick Start
 
@@ -32,6 +33,8 @@ cp .env.example .env
 | `FACEBOOK_APP_SECRET` | Facebook App Secret |
 | `INSTAGRAM_APP_ID` | Instagram App ID |
 | `INSTAGRAM_APP_SECRET` | Instagram App Secret |
+| `YOUTUBE_CLIENT_ID` | Google OAuth Client ID |
+| `YOUTUBE_CLIENT_SECRET` | Google OAuth Client Secret |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret |
@@ -54,8 +57,6 @@ cp .env.example .env
 5. Toggle the app to **Live** mode (top of the page)
 
 ### Required Facebook Permissions
-
-The app requests these permissions during OAuth:
 
 - `pages_show_list`
 - `pages_manage_posts`
@@ -98,9 +99,30 @@ Instagram uses a **separate app** from Facebook on the Meta Developer Portal.
 - `instagram_business_content_publish`
 - `instagram_business_manage_messages`
 
-## 4. Cloudinary Setup
+### Instagram Video Notes
 
-Instagram API requires images to be publicly accessible URLs. We use Cloudinary for this.
+- Instagram deprecated `media_type=VIDEO` — all videos are posted as **Reels** automatically
+- The Reel/Video toggle in the compose form only affects YouTube (Shorts vs regular video)
+
+## 4. YouTube / Google Cloud Setup
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com) and create a new project
+2. Go to **APIs & Services > Library** → enable **YouTube Data API v3**
+3. Go to **APIs & Services > Credentials** → **Create Credentials > OAuth client ID**
+   - Application type: **Web application**
+   - **Authorized JavaScript origins**: `https://localhost:3000`
+   - **Authorized redirect URIs**: `https://localhost:3000/api/auth/youtube/callback`
+4. Copy **Client ID** → `YOUTUBE_CLIENT_ID` and **Client Secret** → `YOUTUBE_CLIENT_SECRET`
+5. Go to **APIs & Services > OAuth consent screen**:
+   - Set up the consent screen (External)
+   - Add scopes: `youtube.upload`, `youtube.readonly`, `userinfo.profile`
+   - Add your Google account as a **Test user**
+
+> Note: During development, Google shows an "unverified app" warning. Click **Advanced > Go to app (unsafe)** to continue. For production, submit the app for Google verification.
+
+## 5. Cloudinary Setup
+
+Instagram and YouTube APIs require media to be publicly accessible URLs. We use Cloudinary for this. Media files upload directly from the browser to Cloudinary using signed uploads (no server-side buffering, no timeout issues).
 
 1. Sign up at [Cloudinary](https://cloudinary.com) (free tier: 25GB)
 2. Go to **Dashboard** or **Settings > API Keys**
@@ -109,7 +131,7 @@ Instagram API requires images to be publicly accessible URLs. We use Cloudinary 
    - **API Key** → `CLOUDINARY_API_KEY`
    - **API Secret** → `CLOUDINARY_API_SECRET`
 
-## 5. Run
+## 6. Run
 
 ```bash
 pnpm setup
@@ -119,12 +141,22 @@ This single command runs: `pnpm install` → `prisma generate` → `prisma db pu
 
 The first time, Next.js will generate a self-signed certificate for HTTPS (required by Instagram OAuth). You may be prompted for your system password.
 
-## 6. Connect Accounts
+## 7. Connect Accounts
 
 1. Go to `https://localhost:3000/accounts`
 2. Click **Connect Facebook** — log in and grant permissions to your Facebook Page
 3. Click **Connect Instagram** — log in and authorize your Business/Creator account
-4. Go to **Compose** (`/`) — write your post, attach an image, select platforms, and hit **Publish Now**
+4. Click **Connect YouTube** — log in with Google and authorize your YouTube channel
+5. Go to **Compose** (`/`) — write your post, attach media, select platforms, and hit **Publish Now**
+
+### Video Posting
+
+- Upload a video file (MP4, MOV, etc.) in the compose form
+- Choose **Reel** or **Video** mode using the toggle that appears
+- **Instagram**: Always posted as Reels (Instagram deprecated regular video)
+- **Facebook**: Video posts via `/{page-id}/videos` — vertical videos auto-display as Reels
+- **YouTube**: Reel mode → Shorts (`#Shorts` appended to title), Video mode → regular upload
+- YouTube has a separate **title field** that appears when YouTube is selected
 
 ## Available Scripts
 
@@ -150,8 +182,21 @@ The first time, Next.js will generate a self-signed certificate for HTTPS (requi
 ### Instagram: "Insufficient Developer Role"
 - Add yourself as an Instagram Tester in the app and **accept the invitation** from Instagram settings
 
+### Instagram: "media_type VIDEO not supported"
+- This is already handled — the app uses `media_type=REELS` for all video uploads
+
 ### Facebook: "Invalid redirect_uri"
 - Make sure `https://localhost:3000/api/auth/facebook/callback` is added to **Valid OAuth Redirect URIs** in the Facebook Login settings
+
+### YouTube: "access_denied" (Error 403)
+- Add your Google account as a **Test user** in OAuth consent screen settings
+
+### YouTube: "unverified app" warning
+- Click **Advanced > Go to app (unsafe)** — this is normal during development
+
+### YouTube: Token expired
+- The app auto-refreshes YouTube tokens using the stored refresh token
+- If refresh fails, reconnect YouTube from the Accounts page
 
 ### Database: "no such table"
 - Run `npx prisma db push` to sync the schema

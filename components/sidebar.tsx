@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { PenSquare, Clock, Link2, ChevronLeft, ChevronRight } from "lucide-react"
-import { FacebookIcon, InstagramIcon } from "@/components/icons"
+import { FacebookIcon, InstagramIcon, YouTubeIcon } from "@/components/icons"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -34,6 +34,13 @@ const platformConfig = [
     icon: InstagramIcon,
     color: "text-pink-500",
     bgColor: "bg-pink-500/10",
+  },
+  {
+    platform: "youtube",
+    label: "YouTube",
+    icon: YouTubeIcon,
+    color: "text-red-500",
+    bgColor: "bg-red-500/10",
   },
 ]
 
