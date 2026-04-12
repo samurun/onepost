@@ -4,33 +4,37 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model Account {
-  id        String   @id @default(cuid())
-  platform  String   // "facebook" | "instagram"
-  name      String   // Page name or IG username
-  platformId String  // Facebook Page ID or IG Business Account ID
-  accessToken  String
+  id           String    @id @default(cuid())
+  platform     String // "facebook" | "instagram" | "youtube"
+  name         String // Page name or IG username
+  platformId   String // Facebook Page ID or IG Business Account ID
+  accessToken  String    @db.Text
   refreshToken String?
   tokenExpiry  DateTime?
-  avatarUrl  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  avatarUrl    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([platform, platformId])
+  @@index([platform])
 }
 
 model Post {
-  id        String   @id @default(cuid())
-  content   String
-  mediaUrls String?  // JSON array of media URLs
-  platforms String   // JSON array of platform IDs posted to
-  status    String   @default("draft") // "draft" | "published" | "failed" | "scheduled"
+  id          String    @id @default(cuid())
+  content     String    @db.Text
+  mediaUrls   Json? // array of media URLs
+  platforms   Json // array of platform IDs posted to
+  status      String    @default("draft") // "draft" | "published" | "partial" | "failed" | "scheduled"
   scheduledAt DateTime?
   publishedAt DateTime?
-  results   String?  // JSON object with results per platform
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  results     Json? // object with results per platform
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
 }

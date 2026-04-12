@@ -1,5 +1,12 @@
+import type { Platform } from "@/lib/platforms"
+
 export type VideoMode = "reel" | "video"
 export type Privacy = "public" | "unlisted" | "private"
+export type TikTokPrivacy =
+  | "PUBLIC_TO_EVERYONE"
+  | "MUTUAL_FOLLOW_FRIENDS"
+  | "FOLLOWER_OF_CREATOR"
+  | "SELF_ONLY"
 
 export interface MediaFile {
   id: string
@@ -8,15 +15,22 @@ export interface MediaFile {
   type: "image" | "video"
   uploadedUrl?: string
   uploading?: boolean
+  error?: string
 }
 
 export interface AccountInfo {
-  platform: string
+  platform: Platform
   name: string
   avatarUrl: string | null
 }
 
+export interface PlatformResult {
+  success: boolean
+  error?: string
+  postId?: string
+}
+
 export interface PostResult {
   status: "published" | "partial" | "failed"
-  results: Record<string, { success: boolean; error?: string }>
+  results: Record<string, PlatformResult>
 }
