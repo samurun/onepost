@@ -32,6 +32,7 @@ model Post {
   scheduledAt DateTime?
   publishedAt DateTime?
   results     Json? // object with results per platform
+  settings    Json? // per-group overrides: { tiktokCaption, youtubeTitle, youtubeDescription, privacy, tiktokPrivacy, videoMode }
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

@@ -7,15 +7,15 @@ import { uploadToTikTok, refreshTikTokToken } from "@/lib/tiktok"
 import { extractErrorMessage } from "@/lib/utils"
 import { createPostSchema } from "@/lib/validations"
 
+type PostResult = { success: boolean; error?: string; postId?: string }
+type KeyedResult = [string, PostResult]
+
 export async function POST(req: NextRequest) {
   let body: unknown
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body" },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
   const parsed = createPostSchema.safeParse(body)
@@ -26,14 +26,36 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { content, platforms, mediaUrls, mediaTypes, videoMode, youtubeTitle, privacy, tiktokPrivacy } = parsed.data
+  const {
+    content,
+    platforms,
+    mediaUrls,
+    mediaTypes,
+    videoMode,
+    youtubeTitle,
+    youtubeDescription,
+    tiktokCaption,
+    privacy,
+    tiktokPrivacy,
+  } = parsed.data
   const firstMediaType = mediaTypes?.[0] ?? "image"
 
-  if (!content && (!mediaUrls || mediaUrls.length === 0)) {
+  const hasAnyText =
+    content || youtubeTitle || youtubeDescription || tiktokCaption
+  if (!hasAnyText && (!mediaUrls || mediaUrls.length === 0)) {
     return NextResponse.json(
       { error: "Content or media is required" },
       { status: 400 }
     )
+  }
+
+  const settings = {
+    youtubeTitle,
+    youtubeDescription,
+    tiktokCaption,
+    videoMode,
+    privacy,
+    tiktokPrivacy,
   }
 
   // Create post record
@@ -43,199 +65,230 @@ export async function POST(req: NextRequest) {
       mediaUrls: mediaUrls ?? undefined,
       platforms,
       status: "draft",
+      settings,
     },
   })
 
-  const results: Record<string, { success: boolean; error?: string; postId?: string }> = {}
+  // Wrap one platform's work so it always resolves to KeyedResult[]
+  // (errors become failure results, not thrown rejections).
+  const platformTasks: Promise<KeyedResult[]>[] = []
 
-  // Post to Facebook
   if (platforms.includes("facebook")) {
-    const fbAccounts = await prisma.account.findMany({
-      where: { platform: "facebook" },
-    })
-
-    for (const account of fbAccounts) {
-      try {
-        const result = await postToFacebookPage(
-          account.platformId,
-          account.accessToken,
-          content,
-          mediaUrls?.[0],
-          firstMediaType
+    platformTasks.push(
+      (async (): Promise<KeyedResult[]> => {
+        const accounts = await prisma.account.findMany({
+          where: { platform: "facebook" },
+        })
+        return Promise.all(
+          accounts.map(async (account): Promise<KeyedResult> => {
+            const key = `facebook_${account.platformId}`
+            try {
+              const result = await postToFacebookPage(
+                account.platformId,
+                account.accessToken,
+                content,
+                mediaUrls?.[0],
+                firstMediaType
+              )
+              return [
+                key,
+                { success: true, postId: result.id || result.post_id },
+              ]
+            } catch (err) {
+              return [key, { success: false, error: extractErrorMessage(err) }]
+            }
+          })
         )
-        results[`facebook_${account.platformId}`] = {
-          success: true,
-          postId: result.id || result.post_id,
-        }
-      } catch (err) {
-        results[`facebook_${account.platformId}`] = {
-          success: false,
-          error: extractErrorMessage(err),
-        }
-      }
-    }
+      })()
+    )
   }
 
-  // Post to Instagram
   if (platforms.includes("instagram")) {
     if (!mediaUrls || mediaUrls.length === 0) {
-      results["instagram"] = {
-        success: false,
-        error: "Instagram requires at least one image or video",
-      }
+      platformTasks.push(
+        Promise.resolve([
+          [
+            "instagram",
+            {
+              success: false,
+              error: "Instagram requires at least one image or video",
+            },
+          ],
+        ])
+      )
     } else {
-      const igAccounts = await prisma.account.findMany({
-        where: { platform: "instagram" },
-      })
-
-      for (const account of igAccounts) {
-        try {
-          const result = await postToInstagram(
-            account.platformId,
-            account.accessToken,
-            content,
-            mediaUrls[0],
-            firstMediaType
+      platformTasks.push(
+        (async (): Promise<KeyedResult[]> => {
+          const accounts = await prisma.account.findMany({
+            where: { platform: "instagram" },
+          })
+          return Promise.all(
+            accounts.map(async (account): Promise<KeyedResult> => {
+              const key = `instagram_${account.platformId}`
+              try {
+                const result = await postToInstagram(
+                  account.platformId,
+                  account.accessToken,
+                  content,
+                  mediaUrls[0],
+                  firstMediaType
+                )
+                return [key, { success: true, postId: result.id }]
+              } catch (err) {
+                return [
+                  key,
+                  { success: false, error: extractErrorMessage(err) },
+                ]
+              }
+            })
           )
-          results[`instagram_${account.platformId}`] = {
-            success: true,
-            postId: result.id,
-          }
-        } catch (err) {
-          results[`instagram_${account.platformId}`] = {
-            success: false,
-            error: extractErrorMessage(err),
-          }
-        }
-      }
+        })()
+      )
     }
   }
 
-  // Post to YouTube
   if (platforms.includes("youtube")) {
     const videoUrl = mediaUrls?.find((_, i) => mediaTypes?.[i] === "video")
     if (!videoUrl) {
-      results["youtube"] = {
-        success: false,
-        error: "YouTube requires a video",
-      }
+      platformTasks.push(
+        Promise.resolve([
+          [
+            "youtube",
+            { success: false, error: "YouTube requires a video" },
+          ],
+        ])
+      )
     } else {
-      const ytAccounts = await prisma.account.findMany({
-        where: { platform: "youtube" },
-      })
+      platformTasks.push(
+        (async (): Promise<KeyedResult[]> => {
+          const accounts = await prisma.account.findMany({
+            where: { platform: "youtube" },
+          })
+          return Promise.all(
+            accounts.map(async (account): Promise<KeyedResult> => {
+              const key = `youtube_${account.platformId}`
+              try {
+                let accessToken = account.accessToken
+                if (
+                  account.tokenExpiry &&
+                  new Date(account.tokenExpiry) < new Date()
+                ) {
+                  if (!account.refreshToken) {
+                    throw new Error(
+                      "YouTube token expired — please reconnect"
+                    )
+                  }
+                  const refreshed = await refreshYouTubeToken(
+                    account.refreshToken
+                  )
+                  accessToken = refreshed.access_token
+                  await prisma.account.update({
+                    where: { id: account.id },
+                    data: {
+                      accessToken,
+                      tokenExpiry: new Date(
+                        Date.now() + refreshed.expires_in * 1000
+                      ),
+                    },
+                  })
+                }
 
-      for (const account of ytAccounts) {
-        try {
-          // Refresh token if expired
-          let accessToken = account.accessToken
-          if (
-            account.tokenExpiry &&
-            new Date(account.tokenExpiry) < new Date()
-          ) {
-            if (!account.refreshToken) {
-              throw new Error("YouTube token expired — please reconnect")
-            }
-            const refreshed = await refreshYouTubeToken(account.refreshToken)
-            accessToken = refreshed.access_token
-            await prisma.account.update({
-              where: { id: account.id },
-              data: {
-                accessToken,
-                tokenExpiry: new Date(
-                  Date.now() + refreshed.expires_in * 1000
-                ),
-              },
+                const isShorts = videoMode === "reel"
+                let title = youtubeTitle || "Untitled"
+                if (isShorts && !title.includes("#Shorts")) {
+                  title = `${title} #Shorts`
+                }
+
+                const result = await uploadToYouTube(
+                  accessToken,
+                  title,
+                  youtubeDescription ?? "",
+                  videoUrl,
+                  privacy || "public",
+                  isShorts
+                )
+                return [key, { success: true, postId: result.id }]
+              } catch (err) {
+                return [
+                  key,
+                  { success: false, error: extractErrorMessage(err) },
+                ]
+              }
             })
-          }
-
-          const isShorts = videoMode === "reel"
-          let title = youtubeTitle || "Untitled"
-
-          if (isShorts && !title.includes("#Shorts")) {
-            title = `${title} #Shorts`
-          }
-
-          const result = await uploadToYouTube(
-            accessToken,
-            title,
-            content,
-            videoUrl,
-            privacy || "public",
-            isShorts
           )
-          results[`youtube_${account.platformId}`] = {
-            success: true,
-            postId: result.id,
-          }
-        } catch (err) {
-          results[`youtube_${account.platformId}`] = {
-            success: false,
-            error: extractErrorMessage(err),
-          }
-        }
-      }
+        })()
+      )
     }
   }
 
-  // Post to TikTok
   if (platforms.includes("tiktok")) {
     const videoUrl = mediaUrls?.find((_, i) => mediaTypes?.[i] === "video")
     if (!videoUrl) {
-      results["tiktok"] = {
-        success: false,
-        error: "TikTok requires a video",
-      }
+      platformTasks.push(
+        Promise.resolve([
+          ["tiktok", { success: false, error: "TikTok requires a video" }],
+        ])
+      )
     } else {
-      const ttAccounts = await prisma.account.findMany({
-        where: { platform: "tiktok" },
-      })
+      platformTasks.push(
+        (async (): Promise<KeyedResult[]> => {
+          const accounts = await prisma.account.findMany({
+            where: { platform: "tiktok" },
+          })
+          return Promise.all(
+            accounts.map(async (account): Promise<KeyedResult> => {
+              const key = `tiktok_${account.platformId}`
+              try {
+                let accessToken = account.accessToken
+                if (
+                  account.tokenExpiry &&
+                  new Date(account.tokenExpiry) < new Date()
+                ) {
+                  if (!account.refreshToken) {
+                    throw new Error(
+                      "TikTok token expired — please reconnect"
+                    )
+                  }
+                  const refreshed = await refreshTikTokToken(
+                    account.refreshToken
+                  )
+                  accessToken = refreshed.access_token
+                  await prisma.account.update({
+                    where: { id: account.id },
+                    data: {
+                      accessToken,
+                      refreshToken: refreshed.refresh_token,
+                      tokenExpiry: new Date(
+                        Date.now() + refreshed.expires_in * 1000
+                      ),
+                    },
+                  })
+                }
 
-      for (const account of ttAccounts) {
-        try {
-          // Refresh token if expired
-          let accessToken = account.accessToken
-          if (
-            account.tokenExpiry &&
-            new Date(account.tokenExpiry) < new Date()
-          ) {
-            if (!account.refreshToken) {
-              throw new Error("TikTok token expired — please reconnect")
-            }
-            const refreshed = await refreshTikTokToken(account.refreshToken)
-            accessToken = refreshed.access_token
-            await prisma.account.update({
-              where: { id: account.id },
-              data: {
-                accessToken,
-                refreshToken: refreshed.refresh_token,
-                tokenExpiry: new Date(
-                  Date.now() + refreshed.expires_in * 1000
-                ),
-              },
+                const result = await uploadToTikTok(
+                  accessToken,
+                  tiktokCaption || content || "Untitled",
+                  videoUrl,
+                  tiktokPrivacy || "SELF_ONLY"
+                )
+                return [key, { success: true, postId: result.publish_id }]
+              } catch (err) {
+                return [
+                  key,
+                  { success: false, error: extractErrorMessage(err) },
+                ]
+              }
             })
-          }
-
-          const result = await uploadToTikTok(
-            accessToken,
-            content || "Untitled",
-            videoUrl,
-            tiktokPrivacy || "SELF_ONLY"
           )
-          results[`tiktok_${account.platformId}`] = {
-            success: true,
-            postId: result.publish_id,
-          }
-        } catch (err) {
-          results[`tiktok_${account.platformId}`] = {
-            success: false,
-            error: extractErrorMessage(err),
-          }
-        }
-      }
+        })()
+      )
     }
   }
 
-  // Update post status
+  // Fan out across all platforms + all accounts in parallel.
+  const settled = await Promise.all(platformTasks)
+  const results: Record<string, PostResult> = Object.fromEntries(settled.flat())
+
   const allSuccess = Object.values(results).every((r) => r.success)
   const anySuccess = Object.values(results).some((r) => r.success)
 
