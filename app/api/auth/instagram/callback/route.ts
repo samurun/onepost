@@ -5,8 +5,16 @@ import {
   getInstagramLongLivedToken,
   getInstagramProfile,
 } from "@/lib/instagram"
+import { getSessionUser } from "@/lib/supabase/server"
 
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.redirect(
+      new URL("/sign-in?next=/accounts", req.url)
+    )
+  }
+
   const code = req.nextUrl.searchParams.get("code")
   const error = req.nextUrl.searchParams.get("error")
 
@@ -31,7 +39,8 @@ export async function GET(req: NextRequest) {
     // 4. Save account (use profile user_id, not token exchange user_id)
     await prisma.account.upsert({
       where: {
-        platform_platformId: {
+        userId_platform_platformId: {
+          userId: user.id,
           platform: "instagram",
           platformId: igUserId,
         },
@@ -43,6 +52,7 @@ export async function GET(req: NextRequest) {
         avatarUrl: profile.profile_picture_url || null,
       },
       create: {
+        userId: user.id,
         platform: "instagram",
         platformId: igUserId,
         name: profile.username || profile.name || "Instagram",

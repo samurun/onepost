@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { v2 as cloudinary } from "cloudinary"
+import { getSessionUser } from "@/lib/supabase/server"
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -8,6 +9,9 @@ cloudinary.config({
 })
 
 export async function POST() {
+  const user = await getSessionUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   const apiSecret = process.env.CLOUDINARY_API_SECRET
   const apiKey = process.env.CLOUDINARY_API_KEY
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME

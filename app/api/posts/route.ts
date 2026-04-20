@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { deleteByIdSchema } from "@/lib/validations"
+import { getSessionUser } from "@/lib/supabase/server"
 
 export async function GET() {
+  const user = await getSessionUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   const posts = await prisma.post.findMany({
+    where: { userId: user.id },
     orderBy: { createdAt: "desc" },
   })
 
@@ -11,6 +16,9 @@ export async function GET() {
 }
 
 export async function DELETE(req: NextRequest) {
+  const user = await getSessionUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   try {
     const body = await req.json()
     const parsed = deleteByIdSchema.safeParse(body)
@@ -21,7 +29,12 @@ export async function DELETE(req: NextRequest) {
       )
     }
 
-    await prisma.post.delete({ where: { id: parsed.data.id } })
+    const result = await prisma.post.deleteMany({
+      where: { id: parsed.data.id, userId: user.id },
+    })
+    if (result.count === 0) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json(

@@ -6,8 +6,16 @@ import {
   getUserPages,
   getInstagramAccounts,
 } from "@/lib/facebook"
+import { getSessionUser } from "@/lib/supabase/server"
 
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.redirect(
+      new URL("/sign-in?next=/accounts", req.url)
+    )
+  }
+
   const code = req.nextUrl.searchParams.get("code")
   const error = req.nextUrl.searchParams.get("error")
 
@@ -43,7 +51,8 @@ export async function GET(req: NextRequest) {
       // Save Facebook Page
       await prisma.account.upsert({
         where: {
-          platform_platformId: {
+          userId_platform_platformId: {
+            userId: user.id,
             platform: "facebook",
             platformId: page.id,
           },
@@ -55,6 +64,7 @@ export async function GET(req: NextRequest) {
           avatarUrl: page.picture?.data?.url,
         },
         create: {
+          userId: user.id,
           platform: "facebook",
           platformId: page.id,
           name: page.name,
@@ -69,7 +79,8 @@ export async function GET(req: NextRequest) {
       if (igAccount) {
         await prisma.account.upsert({
           where: {
-            platform_platformId: {
+            userId_platform_platformId: {
+              userId: user.id,
               platform: "instagram",
               platformId: igAccount.id,
             },
@@ -81,6 +92,7 @@ export async function GET(req: NextRequest) {
             avatarUrl: igAccount.profile_picture_url,
           },
           create: {
+            userId: user.id,
             platform: "instagram",
             platformId: igAccount.id,
             name: igAccount.username || igAccount.name || "Instagram",
