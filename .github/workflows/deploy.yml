@@ -1,6 +1,6 @@
 # Deploy to Cloud Run on tag push (e.g. `v1.0.0`).
 #
-# Required GitHub secrets:
+# Required GitHub secrets (under environment `development`):
 #   GCP_PROJECT_ID         — e.g. "onepost-prod"
 #   GCP_WIF_PROVIDER       — full WIF provider resource name, e.g.
 #                            "projects/123456789/locations/global/workloadIdentityPools/github/providers/github"
@@ -9,13 +9,6 @@
 #
 # All runtime secrets live in Google Secret Manager under the name on the right-hand side
 # of each --set-secrets entry below. Grant the deploy SA `roles/secretmanager.secretAccessor`.
-#
-# One-time GCP setup:
-#   gcloud artifacts repositories create onepost --repository-format=docker --location=$REGION
-#   gcloud iam service-accounts create github-deployer --display-name="GitHub Deployer"
-#   # grant roles/run.admin, roles/artifactregistry.writer, roles/iam.serviceAccountUser,
-#   # roles/secretmanager.secretAccessor to the SA
-#   # configure Workload Identity Federation (see https://github.com/google-github-actions/auth#setting-up-workload-identity-federation)
 
 name: Deploy to Cloud Run
 
@@ -38,6 +31,10 @@ jobs:
       contents: read
       id-token: write
 
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      PUBLIC_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -50,31 +47,32 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-
-      - name: Set image tag
-        id: image
-        run: |
-          IMAGE="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${REPOSITORY}/${SERVICE}:${GITHUB_REF_NAME}"
-          echo "ref=$IMAGE" >> "$GITHUB_OUTPUT"
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
       - name: Build image
         run: |
+          : "${PROJECT_ID:?GCP_PROJECT_ID secret is missing}"
+          IMAGE_BASE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE}"
+          TAG_REF="${IMAGE_BASE}:${GITHUB_REF_NAME}"
+          TAG_LATEST="${IMAGE_BASE}:latest"
+          echo "Building ${TAG_REF}"
           docker build \
-            --build-arg NEXT_PUBLIC_APP_URL="${{ secrets.NEXT_PUBLIC_APP_URL }}" \
-            -t "${{ steps.image.outputs.ref }}" \
-            -t "${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${REPOSITORY}/${SERVICE}:latest" \
+            --build-arg NEXT_PUBLIC_APP_URL="${PUBLIC_URL}" \
+            -t "${TAG_REF}" \
+            -t "${TAG_LATEST}" \
             .
+          echo "IMAGE_REF=${TAG_REF}"   >> "$GITHUB_ENV"
+          echo "IMAGE_LATEST=${TAG_LATEST}" >> "$GITHUB_ENV"
 
       - name: Push image
         run: |
-          docker push "${{ steps.image.outputs.ref }}"
-          docker push "${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${REPOSITORY}/${SERVICE}:latest"
+          docker push "${IMAGE_REF}"
+          docker push "${IMAGE_LATEST}"
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy "${SERVICE}" \
-            --image "${{ steps.image.outputs.ref }}" \
+            --image "${IMAGE_REF}" \
             --region "${REGION}" \
             --platform managed \
             --allow-unauthenticated \
@@ -84,7 +82,7 @@ jobs:
             --concurrency=80 \
             --min-instances=0 \
             --max-instances=4 \
-            --set-env-vars "NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }},NODE_ENV=production" \
+            --set-env-vars "NEXT_PUBLIC_APP_URL=${PUBLIC_URL},NODE_ENV=production" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,DIRECT_URL=DIRECT_URL:latest,FACEBOOK_APP_ID=FACEBOOK_APP_ID:latest,FACEBOOK_APP_SECRET=FACEBOOK_APP_SECRET:latest,INSTAGRAM_APP_ID=INSTAGRAM_APP_ID:latest,INSTAGRAM_APP_SECRET=INSTAGRAM_APP_SECRET:latest,YOUTUBE_CLIENT_ID=YOUTUBE_CLIENT_ID:latest,YOUTUBE_CLIENT_SECRET=YOUTUBE_CLIENT_SECRET:latest,CLOUDINARY_CLOUD_NAME=CLOUDINARY_CLOUD_NAME:latest,CLOUDINARY_API_KEY=CLOUDINARY_API_KEY:latest,CLOUDINARY_API_SECRET=CLOUDINARY_API_SECRET:latest"
 
       - name: Show service URL
