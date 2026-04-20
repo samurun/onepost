@@ -6,11 +6,15 @@ import { uploadToYouTube, refreshYouTubeToken } from "@/lib/youtube"
 import { uploadToTikTok, refreshTikTokToken } from "@/lib/tiktok"
 import { extractErrorMessage } from "@/lib/utils"
 import { createPostSchema } from "@/lib/validations"
+import { getSessionUser } from "@/lib/supabase/server"
 
 type PostResult = { success: boolean; error?: string; postId?: string }
 type KeyedResult = [string, PostResult]
 
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   let body: unknown
   try {
     body = await req.json()
@@ -61,6 +65,7 @@ export async function POST(req: NextRequest) {
   // Create post record
   const post = await prisma.post.create({
     data: {
+      userId: user.id,
       content: content || "",
       mediaUrls: mediaUrls ?? undefined,
       platforms,
@@ -77,7 +82,7 @@ export async function POST(req: NextRequest) {
     platformTasks.push(
       (async (): Promise<KeyedResult[]> => {
         const accounts = await prisma.account.findMany({
-          where: { platform: "facebook" },
+          where: { platform: "facebook", userId: user.id },
         })
         return Promise.all(
           accounts.map(async (account): Promise<KeyedResult> => {
@@ -120,7 +125,7 @@ export async function POST(req: NextRequest) {
       platformTasks.push(
         (async (): Promise<KeyedResult[]> => {
           const accounts = await prisma.account.findMany({
-            where: { platform: "instagram" },
+            where: { platform: "instagram", userId: user.id },
           })
           return Promise.all(
             accounts.map(async (account): Promise<KeyedResult> => {
@@ -162,7 +167,7 @@ export async function POST(req: NextRequest) {
       platformTasks.push(
         (async (): Promise<KeyedResult[]> => {
           const accounts = await prisma.account.findMany({
-            where: { platform: "youtube" },
+            where: { platform: "youtube", userId: user.id },
           })
           return Promise.all(
             accounts.map(async (account): Promise<KeyedResult> => {
@@ -233,7 +238,7 @@ export async function POST(req: NextRequest) {
       platformTasks.push(
         (async (): Promise<KeyedResult[]> => {
           const accounts = await prisma.account.findMany({
-            where: { platform: "tiktok" },
+            where: { platform: "tiktok", userId: user.id },
           })
           return Promise.all(
             accounts.map(async (account): Promise<KeyedResult> => {

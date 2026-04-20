@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { exchangeYouTubeCode, getYouTubeChannel } from "@/lib/youtube"
+import { getSessionUser } from "@/lib/supabase/server"
 
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.redirect(
+      new URL("/sign-in?next=/accounts", req.url)
+    )
+  }
+
   const code = req.nextUrl.searchParams.get("code")
   const error = req.nextUrl.searchParams.get("error")
 
@@ -24,7 +32,8 @@ export async function GET(req: NextRequest) {
 
     await prisma.account.upsert({
       where: {
-        platform_platformId: {
+        userId_platform_platformId: {
+          userId: user.id,
           platform: "youtube",
           platformId: channel.id,
         },
@@ -37,6 +46,7 @@ export async function GET(req: NextRequest) {
         avatarUrl: channel.thumbnailUrl,
       },
       create: {
+        userId: user.id,
         platform: "youtube",
         platformId: channel.id,
         name: channel.title,

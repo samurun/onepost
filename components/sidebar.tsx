@@ -1,7 +1,14 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { PenSquare, Clock, Link2, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  PenSquare,
+  Clock,
+  Link2,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+} from "lucide-react"
 import { ACTIVE_PLATFORMS, PLATFORMS } from "@/lib/platforms"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +21,7 @@ import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useAccounts } from "@/hooks/use-accounts"
+import { useUser } from "@/hooks/use-user"
 
 const navItems = [
   { icon: PenSquare, label: "Compose", href: "/" },
@@ -33,8 +41,11 @@ export function Sidebar() {
     return () => mq.removeEventListener("change", handler)
   }, [])
   const { accounts } = useAccounts()
+  const { user } = useUser()
   const connectedPlatforms = [...new Set(accounts.map((a) => a.platform))]
   const pathname = usePathname()
+  const email = user?.email ?? ""
+  const emailInitial = email ? email[0]!.toUpperCase() : "?"
 
   return (
     <aside
@@ -163,6 +174,49 @@ export function Sidebar() {
           )}
         </div>
       </div>
+
+      {/* User footer */}
+      {email && (
+        <div className="p-2">
+          <Separator className="mb-2" />
+          <form action="/auth/sign-out" method="post">
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  type="submit"
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-white/4",
+                    collapsed && "justify-center px-0"
+                  )}
+                >
+                  <div
+                    aria-hidden="true"
+                    className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-[10px] font-ui-strong text-accent"
+                  >
+                    {emailInitial}
+                  </div>
+                  {!collapsed && (
+                    <>
+                      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                        {email}
+                      </span>
+                      <LogOut
+                        className="size-3.5 text-muted-foreground/70"
+                        aria-hidden="true"
+                      />
+                    </>
+                  )}
+                </button>
+              </TooltipTrigger>
+              {collapsed && (
+                <TooltipContent side="right">
+                  Sign out ({email})
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </form>
+        </div>
+      )}
 
       {/* Collapse Toggle */}
       <button
