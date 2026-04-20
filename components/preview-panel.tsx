@@ -4,29 +4,20 @@ import { useState } from "react"
 import type { MediaFile, AccountInfo } from "@/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Send } from "lucide-react"
-import {
-  FacebookIcon,
-  InstagramIcon,
-  YouTubeIcon,
-  TikTokIcon,
-} from "@/components/icons"
+import { FacebookIcon, InstagramIcon } from "@/components/icons"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { FacebookPreview } from "@/components/preview/facebook-preview"
 import { InstagramPreview } from "@/components/preview/instagram-preview"
-import { YouTubePreview } from "@/components/preview/youtube-preview"
-import { TikTokPreview } from "@/components/preview/tiktok-preview"
 
 interface PreviewPanelProps {
-  content: string
-  youtubeTitle?: string
+  metaCaption: string
   selectedPlatforms: string[]
   mediaFiles: MediaFile[]
   accounts?: AccountInfo[]
 }
 
 export function PreviewPanel({
-  content,
-  youtubeTitle,
+  metaCaption,
   selectedPlatforms,
   mediaFiles,
   accounts = [],
@@ -35,18 +26,14 @@ export function PreviewPanel({
   const [activeTab, setActiveTab] = useState(defaultTab)
   const fbAccount = accounts.find((a) => a.platform === "facebook")
   const igAccount = accounts.find((a) => a.platform === "instagram")
-  const ytAccount = accounts.find((a) => a.platform === "youtube")
-  const ttAccount = accounts.find((a) => a.platform === "tiktok")
 
   if (selectedPlatforms.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center">
-        <div className="mb-3 flex size-14 items-center justify-center rounded-full bg-muted/50">
-          <Send className="size-6 text-muted-foreground/40" />
+        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-white/4">
+          <Send className="size-5 text-muted-foreground/50" aria-hidden="true" />
         </div>
-        <p className="text-sm font-medium text-muted-foreground">
-          Select a platform
-        </p>
+        <p className="text-sm font-ui text-foreground">Select a platform</p>
         <p className="mt-1 max-w-48 text-xs leading-relaxed text-muted-foreground/60">
           Choose where to post to see a live preview
         </p>
@@ -56,34 +43,26 @@ export function PreviewPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
+      <h3 className="mb-3 text-[10px] font-ui uppercase tracking-widest text-muted-foreground/60">
         Preview
       </h3>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="flex flex-1 flex-col"
+      >
         <TabsList variant="line" className="mb-4 flex-wrap">
           {selectedPlatforms.includes("facebook") && (
-            <TabsTrigger value="facebook" className="gap-1.5 text-xs">
+            <TabsTrigger value="facebook" className="gap-1.5 text-xs font-ui">
               <FacebookIcon className="size-3.5 text-blue-500" />
               Facebook
             </TabsTrigger>
           )}
           {selectedPlatforms.includes("instagram") && (
-            <TabsTrigger value="instagram" className="gap-1.5 text-xs">
+            <TabsTrigger value="instagram" className="gap-1.5 text-xs font-ui">
               <InstagramIcon className="size-3.5 text-pink-500" />
               Instagram
-            </TabsTrigger>
-          )}
-          {selectedPlatforms.includes("youtube") && (
-            <TabsTrigger value="youtube" className="gap-1.5 text-xs">
-              <YouTubeIcon className="size-3.5 text-red-500" />
-              YouTube
-            </TabsTrigger>
-          )}
-          {selectedPlatforms.includes("tiktok") && (
-            <TabsTrigger value="tiktok" className="gap-1.5 text-xs">
-              <TikTokIcon className="size-3.5" />
-              TikTok
             </TabsTrigger>
           )}
         </TabsList>
@@ -92,7 +71,7 @@ export function PreviewPanel({
           {activeTab === "facebook" && (
             <TabsContent value="facebook">
               <FacebookPreview
-                content={content}
+                content={metaCaption}
                 mediaFiles={mediaFiles}
                 account={fbAccount}
               />
@@ -101,28 +80,9 @@ export function PreviewPanel({
           {activeTab === "instagram" && (
             <TabsContent value="instagram">
               <InstagramPreview
-                content={content}
+                content={metaCaption}
                 mediaFiles={mediaFiles}
                 account={igAccount}
-              />
-            </TabsContent>
-          )}
-          {activeTab === "youtube" && (
-            <TabsContent value="youtube">
-              <YouTubePreview
-                content={content}
-                youtubeTitle={youtubeTitle}
-                mediaFiles={mediaFiles}
-                account={ytAccount}
-              />
-            </TabsContent>
-          )}
-          {activeTab === "tiktok" && (
-            <TabsContent value="tiktok">
-              <TikTokPreview
-                content={content}
-                mediaFiles={mediaFiles}
-                account={ttAccount}
               />
             </TabsContent>
           )}

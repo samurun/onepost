@@ -28,7 +28,27 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { id, content, platforms, mediaUrls } = parsed.data
+    const {
+      id,
+      content,
+      platforms,
+      mediaUrls,
+      youtubeTitle,
+      youtubeDescription,
+      tiktokCaption,
+      videoMode,
+      privacy,
+      tiktokPrivacy,
+    } = parsed.data
+
+    const settings = {
+      youtubeTitle,
+      youtubeDescription,
+      tiktokCaption,
+      videoMode,
+      privacy,
+      tiktokPrivacy,
+    }
 
     if (id) {
       const draft = await prisma.post.update({
@@ -37,6 +57,7 @@ export async function POST(req: NextRequest) {
           content,
           platforms,
           mediaUrls: mediaUrls ?? undefined,
+          settings,
         },
       })
       return NextResponse.json(draft)
@@ -48,11 +69,13 @@ export async function POST(req: NextRequest) {
         platforms,
         mediaUrls: mediaUrls ?? undefined,
         status: "draft",
+        settings,
       },
     })
 
     return NextResponse.json(draft)
-  } catch {
+  } catch (err) {
+    console.error("[drafts] save error:", err)
     return NextResponse.json(
       { error: "Failed to save draft" },
       { status: 500 }

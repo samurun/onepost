@@ -14,6 +14,10 @@ export const PLATFORM_CHAR_LIMITS: Record<Platform, number> = {
   tiktok: 2200,
 }
 
+// Platforms exposed in the compose UI. YouTube/TikTok are integrated
+// but gated until their flows are ready.
+export const ACTIVE_PLATFORMS: Platform[] = ["facebook", "instagram"]
+
 export const PLATFORMS = [
   {
     id: "facebook" as const,

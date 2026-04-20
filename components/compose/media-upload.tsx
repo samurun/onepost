@@ -65,29 +65,29 @@ export function MediaUpload({ mediaFiles, onChange }: MediaUploadProps) {
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           className={cn(
-            "mt-4 flex w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-5 text-left transition-colors",
+            "flex w-full cursor-pointer items-center gap-3 rounded-lg border border-dashed px-4 py-5 text-left transition-colors",
             isDragging
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/15 hover:border-muted-foreground/30 hover:bg-muted/30"
+              ? "border-accent/50 bg-accent/5"
+              : "border-border hover:border-border/80 hover:bg-white/2"
           )}
         >
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/4">
             <Upload className="size-4 text-muted-foreground" />
           </div>
           <div>
-            <p className="text-sm font-medium">Add media</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm font-ui text-foreground">Add media</p>
+            <p className="text-xs text-muted-foreground/70">
               Drag & drop or click — JPG, PNG, MP4
             </p>
           </div>
         </button>
       ) : (
-        <div className="mt-4">
-          <div className="grid grid-cols-4 gap-2">
+        <div>
+          <div className="grid grid-cols-4 gap-1.5">
             {mediaFiles.map((file) => (
               <div
                 key={file.id}
-                className="group relative aspect-square overflow-hidden rounded-lg border border-border shadow-sm"
+                className="group relative aspect-square overflow-hidden rounded-md border border-border"
               >
                 {file.type === "image" ? (
                   <img
@@ -126,7 +126,7 @@ export function MediaUpload({ mediaFiles, onChange }: MediaUploadProps) {
               type="button"
               aria-label="Add more media"
               onClick={() => fileInputRef.current?.click()}
-              className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/15 transition-colors hover:border-muted-foreground/30 hover:bg-muted/30"
+              className="flex aspect-square items-center justify-center rounded-md border border-dashed border-border transition-colors hover:border-border/80 hover:bg-white/2"
             >
               <ImagePlus className="size-4 text-muted-foreground" />
             </button>

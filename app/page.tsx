@@ -2,13 +2,7 @@
 
 import { useState, useCallback, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import type {
-  MediaFile,
-  PostResult,
-  VideoMode,
-  Privacy,
-  TikTokPrivacy,
-} from "@/types"
+import type { MediaFile, PostResult } from "@/types"
 import { useAccounts } from "@/hooks/use-accounts"
 import { isVideoUrl } from "@/lib/utils"
 import { Sidebar } from "@/components/sidebar"
@@ -26,19 +20,14 @@ export default function Page() {
 
 function PageContent() {
   const searchParams = useSearchParams()
-  const [content, setContent] = useState("")
+  const [metaCaption, setMetaCaption] = useState("")
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([
     "facebook",
     "instagram",
   ])
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
-  const [youtubeTitle, setYoutubeTitle] = useState("")
   const { accounts } = useAccounts()
   const [draftId, setDraftId] = useState<string | null>(null)
-  const [videoMode, setVideoMode] = useState<VideoMode>("reel")
-  const [privacy, setPrivacy] = useState<Privacy>("public")
-  const [tiktokPrivacy, setTiktokPrivacy] =
-    useState<TikTokPrivacy>("SELF_ONLY")
   const [posting, setPosting] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
   const [postResult, setPostResult] = useState<PostResult | null>(null)
@@ -65,8 +54,12 @@ function PageContent() {
           )
           if (draft) {
             setDraftId(draft.id)
-            setContent(draft.content)
-            setSelectedPlatforms(draft.platforms as string[])
+            setMetaCaption(draft.content)
+            setSelectedPlatforms(
+              draft.platforms.filter(
+                (p) => p === "facebook" || p === "instagram"
+              )
+            )
             setPostResult(null)
 
             // Restore media from saved URLs
@@ -157,7 +150,7 @@ function PageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: draftId || undefined,
-          content,
+          content: metaCaption,
           platforms: selectedPlatforms,
           mediaUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
         }),
@@ -170,7 +163,7 @@ function PageContent() {
     } finally {
       setSavingDraft(false)
     }
-  }, [content, selectedPlatforms, draftId, mediaFiles])
+  }, [metaCaption, selectedPlatforms, draftId, mediaFiles])
 
   const handlePost = useCallback(async () => {
     setPosting(true)
@@ -192,14 +185,10 @@ function PageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content,
+          content: metaCaption,
           platforms: selectedPlatforms,
           mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
           mediaTypes: mediaTypes.length > 0 ? mediaTypes : undefined,
-          videoMode,
-          youtubeTitle: youtubeTitle || undefined,
-          privacy,
-          tiktokPrivacy,
         }),
       })
 
@@ -208,8 +197,7 @@ function PageContent() {
 
       if (data.status === "published") {
         toast.success("Published to all platforms!")
-        setContent("")
-        setYoutubeTitle("")
+        setMetaCaption("")
         setMediaFiles([])
         setDraftId(null)
       } else {
@@ -236,7 +224,7 @@ function PageContent() {
     } finally {
       setPosting(false)
     }
-  }, [content, selectedPlatforms, mediaFiles, videoMode, youtubeTitle, privacy, tiktokPrivacy])
+  }, [metaCaption, selectedPlatforms, mediaFiles])
 
   return (
     <div className="flex h-screen bg-background">
@@ -246,28 +234,20 @@ function PageContent() {
         {/* Compose Area */}
         <div className="flex flex-1 flex-col p-4 sm:p-6 lg:overflow-auto lg:p-8">
           <div className="mb-6">
-            <h1 className="text-lg font-semibold tracking-tight">
-              {draftId ? "Edit Draft" : "Create Post"}
+            <h1 className="text-[22px] font-ui-strong tracking-tight text-foreground">
+              {draftId ? "Edit draft" : "Create post"}
             </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
+            <p className="mt-1 text-[13px] text-muted-foreground/80">
               Compose once, publish everywhere.
             </p>
           </div>
           <ComposeForm
-            content={content}
-            onContentChange={setContent}
-            youtubeTitle={youtubeTitle}
-            onYoutubeTitleChange={setYoutubeTitle}
+            metaCaption={metaCaption}
+            onMetaCaptionChange={setMetaCaption}
             selectedPlatforms={selectedPlatforms}
             onPlatformsChange={setSelectedPlatforms}
             mediaFiles={mediaFiles}
             onMediaFilesChange={handleMediaFilesChange}
-            videoMode={videoMode}
-            onVideoModeChange={setVideoMode}
-            privacy={privacy}
-            onPrivacyChange={setPrivacy}
-            tiktokPrivacy={tiktokPrivacy}
-            onTikTokPrivacyChange={setTiktokPrivacy}
             onPost={handlePost}
             onSaveDraft={handleSaveDraft}
             posting={posting}
@@ -279,10 +259,9 @@ function PageContent() {
         <div className="hidden w-px bg-border lg:block" />
 
         {/* Preview Panel — below on mobile, side on lg+ */}
-        <div className="border-t border-border bg-muted/20 p-4 sm:p-6 lg:w-96 lg:shrink-0 lg:overflow-auto lg:border-t-0">
+        <div className="border-t border-border bg-sidebar p-4 sm:p-6 lg:w-96 lg:shrink-0 lg:overflow-auto lg:border-t-0">
           <PreviewPanel
-            content={content}
-            youtubeTitle={youtubeTitle}
+            metaCaption={metaCaption}
             selectedPlatforms={selectedPlatforms}
             mediaFiles={mediaFiles}
             accounts={accounts}
