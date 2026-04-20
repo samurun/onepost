@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { PenSquare, Clock, Link2, ChevronLeft, ChevronRight } from "lucide-react"
-import { PLATFORMS } from "@/lib/platforms"
+import { ACTIVE_PLATFORMS, PLATFORMS } from "@/lib/platforms"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -20,7 +20,6 @@ const navItems = [
   { icon: Clock, label: "Posts", href: "/posts" },
   { icon: Link2, label: "Accounts", href: "/accounts" },
 ]
-
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
@@ -46,15 +45,17 @@ export function Sidebar() {
     >
       {/* Brand */}
       <div className="flex h-14 items-center gap-2.5 px-4">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-violet-600 to-indigo-600 shadow-sm">
-          <span className="text-sm font-bold text-white">O</span>
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary shadow-sm">
+          <span className="text-xs font-ui-strong text-primary-foreground">
+            O
+          </span>
         </div>
         {!collapsed && (
           <div className="flex flex-col">
-            <span className="text-sm font-semibold tracking-tight">
+            <span className="text-sm font-ui tracking-tight text-foreground">
               OnePost
             </span>
-            <span className="text-[10px] leading-none text-muted-foreground">
+            <span className="text-[10px] leading-none text-muted-foreground/80">
               Publish everywhere
             </span>
           </div>
@@ -64,7 +65,7 @@ export function Sidebar() {
       <Separator />
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col gap-0.5 p-2">
+      <nav className="flex flex-1 flex-col gap-px p-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href
           return (
@@ -73,13 +74,18 @@ export function Sidebar() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-ui transition-colors",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      ? "bg-white/4 text-foreground"
+                      : "text-muted-foreground hover:bg-white/4 hover:text-foreground"
                   )}
                 >
-                  <item.icon className="size-4 shrink-0" />
+                  <item.icon
+                    className={cn(
+                      "size-4 shrink-0",
+                      isActive ? "text-accent" : ""
+                    )}
+                  />
                   {!collapsed && <span>{item.label}</span>}
                 </Link>
               </TooltipTrigger>
@@ -95,61 +101,66 @@ export function Sidebar() {
       <div className="p-2">
         <Separator className="mb-2" />
         {!collapsed && (
-          <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+          <p className="mb-1 px-2.5 text-[10px] font-ui uppercase tracking-widest text-muted-foreground/60">
             Connected
           </p>
         )}
-        <div className="flex flex-col gap-0.5">
-          {PLATFORMS.map((account) => {
-            const isConnected = connectedPlatforms.includes(account.id)
-            return (
-              <Tooltip key={account.id} delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href="/accounts"
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors hover:bg-accent",
-                      collapsed && "justify-center px-0"
-                    )}
-                  >
-                    <div
+        <div className="flex flex-col gap-px">
+          {PLATFORMS.filter((p) => ACTIVE_PLATFORMS.includes(p.id)).map(
+            (account) => {
+              const isConnected = connectedPlatforms.includes(account.id)
+              return (
+                <Tooltip key={account.id} delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href="/accounts"
                       className={cn(
-                        "flex size-6 shrink-0 items-center justify-center rounded-md",
-                        account.bgColor
+                        "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors hover:bg-white/4",
+                        collapsed && "justify-center px-0"
                       )}
                     >
-                      <account.icon
-                        className={cn("size-3.5", account.color)}
-                      />
-                    </div>
-                    {!collapsed && (
-                      <>
-                        <span className="flex-1 text-sm text-foreground/80">
-                          {account.label}
-                        </span>
-                        {isConnected ? (
-                          <span className="flex size-2 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]" />
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] font-normal text-muted-foreground"
-                          >
-                            Connect
-                          </Badge>
+                      <div
+                        className={cn(
+                          "flex size-5 shrink-0 items-center justify-center rounded-sm",
+                          account.bgColor
                         )}
-                      </>
-                    )}
-                  </Link>
-                </TooltipTrigger>
-                {collapsed && (
-                  <TooltipContent side="right">
-                    {account.label} —{" "}
-                    {isConnected ? "Connected" : "Not connected"}
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            )
-          })}
+                      >
+                        <account.icon
+                          className={cn("size-3", account.color)}
+                        />
+                      </div>
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1 text-sm font-ui text-muted-foreground">
+                            {account.label}
+                          </span>
+                          {isConnected ? (
+                            <span
+                              aria-hidden="true"
+                              className="flex size-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_theme(colors.emerald.500/0.5)]"
+                            />
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1.5 text-[10px] font-ui"
+                            >
+                              Connect
+                            </Badge>
+                          )}
+                        </>
+                      )}
+                    </Link>
+                  </TooltipTrigger>
+                  {collapsed && (
+                    <TooltipContent side="right">
+                      {account.label} —{" "}
+                      {isConnected ? "Connected" : "Not connected"}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              )
+            }
+          )}
         </div>
       </div>
 
@@ -158,7 +169,7 @@ export function Sidebar() {
         type="button"
         onClick={() => setCollapsed(!collapsed)}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="absolute -right-3 top-16 flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-sm transition-colors hover:bg-accent"
+        className="absolute -right-3 top-16 flex size-6 items-center justify-center rounded-full border border-border bg-card shadow-sm transition-colors hover:bg-white/4"
       >
         {collapsed ? (
           <ChevronRight className="size-3" />

@@ -51,28 +51,28 @@ function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case "published":
       return (
-        <Badge className="gap-1 border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">
+        <Badge className="gap-1 border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
           <CheckCircle2 className="size-3" />
           Published
         </Badge>
       )
     case "failed":
       return (
-        <Badge className="gap-1 border-destructive/30 bg-destructive/10 text-destructive">
+        <Badge className="gap-1 border-destructive/20 bg-destructive/10 text-destructive">
           <XCircle className="size-3" />
           Failed
         </Badge>
       )
     case "scheduled":
       return (
-        <Badge className="gap-1 border-blue-500/30 bg-blue-500/10 text-blue-600">
+        <Badge className="gap-1 border-accent/30 bg-accent/10 text-accent">
           <Clock className="size-3" />
           Scheduled
         </Badge>
       )
     default:
       return (
-        <Badge variant="outline" className="gap-1 text-muted-foreground">
+        <Badge variant="outline" className="gap-1">
           <AlertTriangle className="size-3" />
           Draft
         </Badge>
@@ -143,8 +143,10 @@ export default function PostsPage() {
 
       <main className="flex flex-1 flex-col overflow-auto p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
-          <h1 className="text-lg font-semibold tracking-tight">Posts</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <h1 className="text-[22px] font-ui-strong tracking-tight text-foreground">
+            Posts
+          </h1>
+          <p className="mt-1 text-[13px] text-muted-foreground/80">
             Your posting history across all platforms.
           </p>
         </div>
@@ -154,19 +156,17 @@ export default function PostsPage() {
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : posts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/15 py-16 text-center">
-            <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted/50">
-              <FileText className="size-5 text-muted-foreground/40" />
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16 text-center">
+            <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-white/4">
+              <FileText className="size-4 text-muted-foreground/50" aria-hidden="true" />
             </div>
-            <p className="text-sm font-medium text-muted-foreground">
-              No posts yet
-            </p>
+            <p className="text-sm font-ui text-foreground">No posts yet</p>
             <p className="mt-1 text-xs text-muted-foreground/60">
               Go to Compose to create your first post
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {posts.map((post) => {
               const platforms = post.platforms ?? []
               const mediaUrls = post.mediaUrls ?? []
@@ -174,11 +174,11 @@ export default function PostsPage() {
               return (
                 <div
                   key={post.id}
-                  className="flex items-start gap-4 rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+                  className="flex items-start gap-4 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-white/4"
                 >
                   {/* Media thumbnail */}
                   {mediaUrls.length > 0 ? (
-                    <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-border">
+                    <div className="size-12 shrink-0 overflow-hidden rounded-md border border-border">
                       {isVideoUrl(mediaUrls[0]) ? (
                         <video
                           src={mediaUrls[0]}
@@ -194,24 +194,24 @@ export default function PostsPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/30">
-                      <FileText className="size-5 text-muted-foreground/40" />
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border bg-white/2">
+                      <FileText className="size-4 text-muted-foreground/50" aria-hidden="true" />
                     </div>
                   )}
 
                   {/* Content */}
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-sm leading-relaxed">
+                    <p className="line-clamp-2 text-[13px] leading-relaxed text-foreground">
                       {post.content || (
                         <span className="flex items-center gap-1 text-muted-foreground">
-                          <ImageIcon className="size-3.5" />
+                          <ImageIcon className="size-3.5" aria-hidden="true" />
                           Media only
                         </span>
                       )}
                     </p>
                     <div className="mt-2 flex items-center gap-3">
                       <PlatformIcons platforms={platforms} />
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground/70">
                         {timeAgo(post.publishedAt || post.createdAt)}
                       </span>
                     </div>

@@ -38,7 +38,7 @@ export function CharCounter({ count, max }: CharCounterProps) {
                 ? "text-destructive"
                 : percent > 80
                   ? "text-yellow-500"
-                  : "text-primary/60"
+                  : "text-accent/70"
             )}
           />
         </svg>
@@ -46,7 +46,9 @@ export function CharCounter({ count, max }: CharCounterProps) {
       <span
         className={cn(
           "text-[11px] tabular-nums",
-          isOver ? "font-medium text-destructive" : "text-muted-foreground"
+          isOver
+            ? "font-ui text-destructive"
+            : "text-muted-foreground/70"
         )}
       >
         {count.toLocaleString()}/{max.toLocaleString()}
