@@ -2,7 +2,13 @@
 
 import { useRef } from "react"
 import { cn } from "@/lib/utils"
-import type { MediaFile, PostResult, VideoMode, Privacy } from "@/types"
+import type {
+  MediaFile,
+  PostResult,
+  VideoMode,
+  Privacy,
+  TikTokPrivacy,
+} from "@/types"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,18 +21,12 @@ import {
   Save,
   Film,
   Clapperboard,
-  Globe,
-  EyeOff,
-  Link2,
 } from "lucide-react"
-import {
-  PlatformSelector,
-  platforms as platformConfigs,
-} from "@/components/compose/platform-selector"
+import { PlatformSelector } from "@/components/compose/platform-selector"
+import { PLATFORMS, PLATFORM_CHAR_LIMITS } from "@/lib/platforms"
 import { MediaUpload } from "@/components/compose/media-upload"
 import { CharCounter } from "@/components/compose/char-counter"
-
-const INSTAGRAM_MAX = 2200
+import { PlatformSettings } from "@/components/compose/platform-settings"
 
 interface ComposeFormProps {
   content: string
@@ -41,6 +41,8 @@ interface ComposeFormProps {
   onVideoModeChange: (mode: VideoMode) => void
   privacy: Privacy
   onPrivacyChange: (privacy: Privacy) => void
+  tiktokPrivacy: TikTokPrivacy
+  onTikTokPrivacyChange: (privacy: TikTokPrivacy) => void
   onPost?: () => void
   onSaveDraft?: () => void
   posting?: boolean
@@ -61,6 +63,8 @@ export function ComposeForm({
   onVideoModeChange,
   privacy,
   onPrivacyChange,
+  tiktokPrivacy,
+  onTikTokPrivacyChange,
   onPost,
   onSaveDraft,
   posting,
@@ -70,9 +74,11 @@ export function ComposeForm({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const charLimits = selectedPlatforms
-    .map((p) => platformConfigs.find((pl) => pl.id === p)?.maxChars)
+    .map((p) => PLATFORMS.find((pl) => pl.id === p)?.maxChars)
     .filter((v) => v !== undefined)
-  const maxChars = charLimits.length ? Math.min(...charLimits) : INSTAGRAM_MAX
+  const maxChars = charLimits.length
+    ? Math.min(...charLimits)
+    : PLATFORM_CHAR_LIMITS.instagram
 
   const hasContent = content.trim() || mediaFiles.length > 0
   const isUploading = mediaFiles.some((f) => f.uploading)
@@ -84,28 +90,16 @@ export function ComposeForm({
         onChange={onPlatformsChange}
       />
 
-      {/* YouTube Title */}
-      {selectedPlatforms.includes("youtube") && (
-        <div className="mb-3">
-          <input
-            value={youtubeTitle}
-            onChange={(e) => onYoutubeTitleChange(e.target.value)}
-            placeholder="YouTube title"
-            maxLength={100}
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium shadow-sm transition-shadow placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/20"
-          />
-        </div>
-      )}
-
       {/* Text Area Card */}
       <div className="relative rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-ring/20">
         <Textarea
           value={content}
           onChange={(e) => onContentChange(e.target.value)}
+          aria-label="Post content"
           placeholder={
             selectedPlatforms.includes("youtube")
-              ? "Description / caption..."
-              : "What's on your mind?"
+              ? "Description / caption\u2026"
+              : "What\u2019s on your mind?"
           }
           className="min-h-32 resize-none border-none bg-transparent text-base leading-relaxed shadow-none field-sizing-fixed focus-visible:ring-0"
         />
@@ -160,11 +154,18 @@ export function ComposeForm({
 
       {/* Video Mode Toggle */}
       {mediaFiles.some((f) => f.type === "video") && (
-        <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-1">
+        <div
+          className="mt-3 flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-1"
+          role="radiogroup"
+          aria-label="Video mode"
+        >
           <button
+            type="button"
+            role="radio"
+            aria-checked={videoMode === "reel"}
             onClick={() => onVideoModeChange("reel")}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
               videoMode === "reel"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -174,9 +175,12 @@ export function ComposeForm({
             Reel
           </button>
           <button
+            type="button"
+            role="radio"
+            aria-checked={videoMode === "video"}
             onClick={() => onVideoModeChange("video")}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
               videoMode === "video"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -188,41 +192,25 @@ export function ComposeForm({
         </div>
       )}
 
-      {/* Privacy Selector — show when YouTube is selected */}
-      {selectedPlatforms.includes("youtube") && (
-        <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-1">
-          {(
-            [
-              { value: "public", label: "Public", icon: Globe },
-              { value: "unlisted", label: "Unlisted", icon: Link2 },
-              { value: "private", label: "Private", icon: EyeOff },
-            ] as const
-          ).map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => onPrivacyChange(opt.value)}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
-                privacy === opt.value
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <opt.icon className="size-3.5" />
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Platform Settings (YouTube title/privacy, TikTok privacy) */}
+      <PlatformSettings
+        selectedPlatforms={selectedPlatforms}
+        youtubeTitle={youtubeTitle}
+        onYoutubeTitleChange={onYoutubeTitleChange}
+        privacy={privacy}
+        onPrivacyChange={onPrivacyChange}
+        tiktokPrivacy={tiktokPrivacy}
+        onTikTokPrivacyChange={onTikTokPrivacyChange}
+      />
 
       {/* Publishing Progress */}
       {posting && (
         <div className="mt-4 space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
           <p className="mb-2 text-xs font-medium text-muted-foreground">
-            Publishing...
+            Publishing\u2026
           </p>
           {selectedPlatforms.map((pId) => {
-            const pConfig = platformConfigs.find((p) => p.id === pId)
+            const pConfig = PLATFORMS.find((p) => p.id === pId)
             if (!pConfig) return null
             return (
               <div
@@ -245,7 +233,7 @@ export function ComposeForm({
         <div className="mt-4 space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
           {Object.entries(postResult.results).map(([key, result]) => {
             const platformId = key.split("_")[0]
-            const pConfig = platformConfigs.find((p) => p.id === platformId)
+            const pConfig = PLATFORMS.find((p) => p.id === platformId)
             return (
               <div key={key} className="flex items-center gap-2.5 text-sm">
                 {result.success ? (
@@ -289,7 +277,7 @@ export function ComposeForm({
           ) : (
             <Send className="size-4" />
           )}
-          {posting ? "Publishing..." : "Publish Now"}
+          {posting ? "Publishing\u2026" : "Publish Now"}
         </Button>
         <Button
           variant="outline"
@@ -303,7 +291,7 @@ export function ComposeForm({
           ) : (
             <Save className="size-4" />
           )}
-          {savingDraft ? "Saving..." : "Draft"}
+          {savingDraft ? "Saving\u2026" : "Draft"}
         </Button>
       </div>
     </div>

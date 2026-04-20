@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
+import { saveDraftSchema } from "@/lib/validations"
 
 export async function GET() {
   try {
@@ -18,20 +19,24 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, content, platforms, mediaUrls } = (await req.json()) as {
-      id?: string
-      content: string
-      platforms: string[]
-      mediaUrls?: string[]
+    const body = await req.json()
+    const parsed = saveDraftSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
+        { status: 400 }
+      )
     }
+
+    const { id, content, platforms, mediaUrls } = parsed.data
 
     if (id) {
       const draft = await prisma.post.update({
         where: { id },
         data: {
           content,
-          platforms: JSON.stringify(platforms),
-          mediaUrls: mediaUrls ? JSON.stringify(mediaUrls) : null,
+          platforms,
+          mediaUrls: mediaUrls ?? undefined,
         },
       })
       return NextResponse.json(draft)
@@ -40,8 +45,8 @@ export async function POST(req: NextRequest) {
     const draft = await prisma.post.create({
       data: {
         content,
-        platforms: JSON.stringify(platforms),
-        mediaUrls: mediaUrls ? JSON.stringify(mediaUrls) : null,
+        platforms,
+        mediaUrls: mediaUrls ?? undefined,
         status: "draft",
       },
     })

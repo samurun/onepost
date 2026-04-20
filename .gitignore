@@ -44,3 +44,7 @@ prisma/dev.db-journal
 /public/uploads
 
 certificates
+
+# claude code (local settings)
+.claude/settings.local.json
+.claude/skills/

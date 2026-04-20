@@ -33,7 +33,7 @@ export function CharCounter({ count, max }: CharCounterProps) {
             strokeWidth="2.5"
             strokeDasharray={`${percent * 0.5} 50`}
             className={cn(
-              "transition-all",
+              "transition-colors",
               isOver
                 ? "text-destructive"
                 : percent > 80

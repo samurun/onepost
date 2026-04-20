@@ -76,20 +76,24 @@ export async function getInstagramProfile(accessToken: string) {
 async function waitForMediaReady(
   containerId: string,
   accessToken: string,
-  maxAttempts = 10
+  maxAttempts = 15
 ) {
   for (let i = 0; i < maxAttempts; i++) {
     const res = await fetch(
       `${GRAPH_API}/v22.0/${containerId}?fields=status_code&access_token=${accessToken}`
     )
+    if (!res.ok) {
+      throw new Error("Instagram: failed to check media status")
+    }
     const data = await res.json()
     if (data.status_code === "FINISHED") return
     if (data.status_code === "ERROR") {
       throw new Error("Instagram media processing failed")
     }
 
-    // Wait 2 seconds before checking again
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    // Exponential backoff: 2s, 4s, 8s, capped at 16s
+    const delay = Math.min(2000 * Math.pow(2, i), 16000)
+    await new Promise((resolve) => setTimeout(resolve, delay))
   }
   throw new Error("Instagram media processing timed out")
 }

@@ -1,13 +1,20 @@
 "use client"
 
+import { useState } from "react"
 import type { MediaFile, AccountInfo } from "@/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Send } from "lucide-react"
-import { FacebookIcon, InstagramIcon, YouTubeIcon } from "@/components/icons"
+import {
+  FacebookIcon,
+  InstagramIcon,
+  YouTubeIcon,
+  TikTokIcon,
+} from "@/components/icons"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { FacebookPreview } from "@/components/preview/facebook-preview"
 import { InstagramPreview } from "@/components/preview/instagram-preview"
 import { YouTubePreview } from "@/components/preview/youtube-preview"
+import { TikTokPreview } from "@/components/preview/tiktok-preview"
 
 interface PreviewPanelProps {
   content: string
@@ -25,9 +32,11 @@ export function PreviewPanel({
   accounts = [],
 }: PreviewPanelProps) {
   const defaultTab = selectedPlatforms[0] || "facebook"
+  const [activeTab, setActiveTab] = useState(defaultTab)
   const fbAccount = accounts.find((a) => a.platform === "facebook")
   const igAccount = accounts.find((a) => a.platform === "instagram")
   const ytAccount = accounts.find((a) => a.platform === "youtube")
+  const ttAccount = accounts.find((a) => a.platform === "tiktok")
 
   if (selectedPlatforms.length === 0) {
     return (
@@ -51,8 +60,8 @@ export function PreviewPanel({
         Preview
       </h3>
 
-      <Tabs defaultValue={defaultTab} className="flex flex-1 flex-col">
-        <TabsList variant="line" className="mb-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col">
+        <TabsList variant="line" className="mb-4 flex-wrap">
           {selectedPlatforms.includes("facebook") && (
             <TabsTrigger value="facebook" className="gap-1.5 text-xs">
               <FacebookIcon className="size-3.5 text-blue-500" />
@@ -71,31 +80,52 @@ export function PreviewPanel({
               YouTube
             </TabsTrigger>
           )}
+          {selectedPlatforms.includes("tiktok") && (
+            <TabsTrigger value="tiktok" className="gap-1.5 text-xs">
+              <TikTokIcon className="size-3.5" />
+              TikTok
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <ScrollArea className="flex-1">
-          <TabsContent value="facebook">
-            <FacebookPreview
-              content={content}
-              mediaFiles={mediaFiles}
-              account={fbAccount}
-            />
-          </TabsContent>
-          <TabsContent value="instagram">
-            <InstagramPreview
-              content={content}
-              mediaFiles={mediaFiles}
-              account={igAccount}
-            />
-          </TabsContent>
-          <TabsContent value="youtube">
-            <YouTubePreview
-              content={content}
-              youtubeTitle={youtubeTitle}
-              mediaFiles={mediaFiles}
-              account={ytAccount}
-            />
-          </TabsContent>
+          {activeTab === "facebook" && (
+            <TabsContent value="facebook">
+              <FacebookPreview
+                content={content}
+                mediaFiles={mediaFiles}
+                account={fbAccount}
+              />
+            </TabsContent>
+          )}
+          {activeTab === "instagram" && (
+            <TabsContent value="instagram">
+              <InstagramPreview
+                content={content}
+                mediaFiles={mediaFiles}
+                account={igAccount}
+              />
+            </TabsContent>
+          )}
+          {activeTab === "youtube" && (
+            <TabsContent value="youtube">
+              <YouTubePreview
+                content={content}
+                youtubeTitle={youtubeTitle}
+                mediaFiles={mediaFiles}
+                account={ytAccount}
+              />
+            </TabsContent>
+          )}
+          {activeTab === "tiktok" && (
+            <TabsContent value="tiktok">
+              <TikTokPreview
+                content={content}
+                mediaFiles={mediaFiles}
+                account={ttAccount}
+              />
+            </TabsContent>
+          )}
         </ScrollArea>
       </Tabs>
     </div>

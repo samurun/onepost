@@ -4,8 +4,25 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { Badge } from "@/components/ui/badge"
-import { FacebookIcon, InstagramIcon, YouTubeIcon } from "@/components/icons"
-import { isVideoUrl } from "@/lib/utils"
+import {
+  FacebookIcon,
+  InstagramIcon,
+  YouTubeIcon,
+  TikTokIcon,
+} from "@/components/icons"
+import { isVideoUrl, timeAgo } from "@/lib/utils"
+import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import {
   CheckCircle2,
@@ -22,12 +39,12 @@ import {
 interface Post {
   id: string
   content: string
-  mediaUrls: string | null
-  platforms: string
+  mediaUrls: string[] | null
+  platforms: string[]
   status: string
   publishedAt: string | null
   createdAt: string
-  results: string | null
+  results: Record<string, { success: boolean; error?: string }> | null
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -81,19 +98,13 @@ function PlatformIcons({ platforms }: { platforms: string[] }) {
           <YouTubeIcon className="size-3 text-red-500" />
         </div>
       )}
+      {platforms.includes("tiktok") && (
+        <div className="flex size-5 items-center justify-center rounded bg-foreground/10">
+          <TikTokIcon className="size-3" />
+        </div>
+      )}
     </div>
   )
-}
-
-function timeAgo(dateStr: string) {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-  if (seconds < 60) return "Just now"
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
 }
 
 export default function PostsPage() {
@@ -111,6 +122,8 @@ export default function PostsPage() {
         body: JSON.stringify({ id }),
       })
       setPosts((prev) => prev.filter((p) => p.id !== id))
+    } catch {
+      toast.error("Failed to delete post")
     } finally {
       setDeleting(null)
     }
@@ -120,7 +133,7 @@ export default function PostsPage() {
     fetch("/api/posts")
       .then((res) => res.json())
       .then(setPosts)
-      .catch(() => {})
+      .catch(() => toast.error("Failed to load posts"))
       .finally(() => setLoading(false))
   }, [])
 
@@ -128,7 +141,7 @@ export default function PostsPage() {
     <div className="flex h-screen bg-background">
       <Sidebar />
 
-      <main className="flex flex-1 flex-col overflow-auto p-6 lg:p-8">
+      <main className="flex flex-1 flex-col overflow-auto p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
           <h1 className="text-lg font-semibold tracking-tight">Posts</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -155,10 +168,8 @@ export default function PostsPage() {
         ) : (
           <div className="space-y-2">
             {posts.map((post) => {
-              const platforms: string[] = JSON.parse(post.platforms || "[]")
-              const mediaUrls: string[] = post.mediaUrls
-                ? JSON.parse(post.mediaUrls)
-                : []
+              const platforms = post.platforms ?? []
+              const mediaUrls = post.mediaUrls ?? []
 
               return (
                 <div
@@ -219,19 +230,39 @@ export default function PostsPage() {
                         <PenSquare className="size-3.5" />
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => deletePost(post.id)}
-                      disabled={deleting === post.id}
-                    >
-                      {deleting === post.id ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-3.5" />
-                      )}
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-muted-foreground hover:text-destructive"
+                          disabled={deleting === post.id}
+                        >
+                          {deleting === post.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete post?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently
+                            delete this post.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deletePost(post.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               )

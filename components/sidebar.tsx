@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { PenSquare, Clock, Link2, ChevronLeft, ChevronRight } from "lucide-react"
-import { FacebookIcon, InstagramIcon, YouTubeIcon } from "@/components/icons"
+import { PLATFORMS } from "@/lib/platforms"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -13,6 +13,7 @@ import {
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import { useAccounts } from "@/hooks/use-accounts"
 
 const navItems = [
   { icon: PenSquare, label: "Compose", href: "/" },
@@ -20,49 +21,26 @@ const navItems = [
   { icon: Link2, label: "Accounts", href: "/accounts" },
 ]
 
-const platformConfig = [
-  {
-    platform: "facebook",
-    label: "Facebook",
-    icon: FacebookIcon,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-  },
-  {
-    platform: "instagram",
-    label: "Instagram",
-    icon: InstagramIcon,
-    color: "text-pink-500",
-    bgColor: "bg-pink-500/10",
-  },
-  {
-    platform: "youtube",
-    label: "YouTube",
-    icon: YouTubeIcon,
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
-  },
-]
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
-  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([])
-  const pathname = usePathname()
 
+  // Auto-collapse on small screens
   useEffect(() => {
-    fetch("/api/accounts")
-      .then((res) => res.json())
-      .then((accounts: { platform: string }[]) => {
-        const platforms = [...new Set(accounts.map((a) => a.platform))]
-        setConnectedPlatforms(platforms)
-      })
-      .catch(() => {})
+    const mq = window.matchMedia("(max-width: 768px)")
+    setCollapsed(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setCollapsed(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
   }, [])
+  const { accounts } = useAccounts()
+  const connectedPlatforms = [...new Set(accounts.map((a) => a.platform))]
+  const pathname = usePathname()
 
   return (
     <aside
       className={cn(
-        "relative flex h-screen flex-col border-r border-border bg-sidebar transition-all duration-300",
+        "relative flex h-screen flex-col border-r border-border bg-sidebar transition-[width] duration-300",
         collapsed ? "w-17" : "w-60"
       )}
     >
@@ -95,7 +73,7 @@ export function Sidebar() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -122,10 +100,10 @@ export function Sidebar() {
           </p>
         )}
         <div className="flex flex-col gap-0.5">
-          {platformConfig.map((account) => {
-            const isConnected = connectedPlatforms.includes(account.platform)
+          {PLATFORMS.map((account) => {
+            const isConnected = connectedPlatforms.includes(account.id)
             return (
-              <Tooltip key={account.platform} delayDuration={0}>
+              <Tooltip key={account.id} delayDuration={0}>
                 <TooltipTrigger asChild>
                   <Link
                     href="/accounts"
@@ -177,7 +155,9 @@ export function Sidebar() {
 
       {/* Collapse Toggle */}
       <button
+        type="button"
         onClick={() => setCollapsed(!collapsed)}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         className="absolute -right-3 top-16 flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-sm transition-colors hover:bg-accent"
       >
         {collapsed ? (

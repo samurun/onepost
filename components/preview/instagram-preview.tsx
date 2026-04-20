@@ -109,7 +109,7 @@ export function InstagramPreview({
           </Avatar>
         </div>
         <p className="flex-1 text-[13px] font-semibold">{username}</p>
-        <MoreHorizontal className="size-5 text-muted-foreground/50" />
+        <MoreHorizontal className="size-5 text-muted-foreground/50" aria-hidden="true" />
       </div>
 
       {/* Media */}

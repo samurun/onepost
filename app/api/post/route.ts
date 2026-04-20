@@ -3,26 +3,30 @@ import { prisma } from "@/lib/db"
 import { postToFacebookPage } from "@/lib/facebook"
 import { postToInstagram } from "@/lib/instagram"
 import { uploadToYouTube, refreshYouTubeToken } from "@/lib/youtube"
+import { uploadToTikTok, refreshTikTokToken } from "@/lib/tiktok"
+import { extractErrorMessage } from "@/lib/utils"
+import { createPostSchema } from "@/lib/validations"
 
 export async function POST(req: NextRequest) {
-  const {
-    content,
-    platforms,
-    mediaUrls,
-    mediaTypes,
-    videoMode,
-    youtubeTitle,
-    privacy,
-  } = (await req.json()) as {
-    content: string
-    platforms: string[] // ["facebook", "instagram", "youtube"]
-    mediaUrls?: string[]
-    mediaTypes?: ("image" | "video")[]
-    videoMode?: "reel" | "video"
-    youtubeTitle?: string
-    privacy?: "public" | "unlisted" | "private"
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON body" },
+      { status: 400 }
+    )
   }
 
+  const parsed = createPostSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues.map((i) => i.message).join(", ") },
+      { status: 400 }
+    )
+  }
+
+  const { content, platforms, mediaUrls, mediaTypes, videoMode, youtubeTitle, privacy, tiktokPrivacy } = parsed.data
   const firstMediaType = mediaTypes?.[0] ?? "image"
 
   if (!content && (!mediaUrls || mediaUrls.length === 0)) {
@@ -32,19 +36,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  if (!platforms || platforms.length === 0) {
-    return NextResponse.json(
-      { error: "At least one platform is required" },
-      { status: 400 }
-    )
-  }
-
   // Create post record
   const post = await prisma.post.create({
     data: {
       content: content || "",
-      mediaUrls: mediaUrls ? JSON.stringify(mediaUrls) : null,
-      platforms: JSON.stringify(platforms),
+      mediaUrls: mediaUrls ?? undefined,
+      platforms,
       status: "draft",
     },
   })
@@ -73,7 +70,7 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         results[`facebook_${account.platformId}`] = {
           success: false,
-          error: err instanceof Error ? err.message : "Unknown error",
+          error: extractErrorMessage(err),
         }
       }
     }
@@ -107,7 +104,7 @@ export async function POST(req: NextRequest) {
         } catch (err) {
           results[`instagram_${account.platformId}`] = {
             success: false,
-            error: err instanceof Error ? err.message : "Unknown error",
+            error: extractErrorMessage(err),
           }
         }
       }
@@ -173,7 +170,65 @@ export async function POST(req: NextRequest) {
         } catch (err) {
           results[`youtube_${account.platformId}`] = {
             success: false,
-            error: err instanceof Error ? err.message : "Unknown error",
+            error: extractErrorMessage(err),
+          }
+        }
+      }
+    }
+  }
+
+  // Post to TikTok
+  if (platforms.includes("tiktok")) {
+    const videoUrl = mediaUrls?.find((_, i) => mediaTypes?.[i] === "video")
+    if (!videoUrl) {
+      results["tiktok"] = {
+        success: false,
+        error: "TikTok requires a video",
+      }
+    } else {
+      const ttAccounts = await prisma.account.findMany({
+        where: { platform: "tiktok" },
+      })
+
+      for (const account of ttAccounts) {
+        try {
+          // Refresh token if expired
+          let accessToken = account.accessToken
+          if (
+            account.tokenExpiry &&
+            new Date(account.tokenExpiry) < new Date()
+          ) {
+            if (!account.refreshToken) {
+              throw new Error("TikTok token expired — please reconnect")
+            }
+            const refreshed = await refreshTikTokToken(account.refreshToken)
+            accessToken = refreshed.access_token
+            await prisma.account.update({
+              where: { id: account.id },
+              data: {
+                accessToken,
+                refreshToken: refreshed.refresh_token,
+                tokenExpiry: new Date(
+                  Date.now() + refreshed.expires_in * 1000
+                ),
+              },
+            })
+          }
+
+          const result = await uploadToTikTok(
+            accessToken,
+            content || "Untitled",
+            videoUrl,
+            tiktokPrivacy || "SELF_ONLY"
+          )
+          results[`tiktok_${account.platformId}`] = {
+            success: true,
+            postId: result.publish_id,
+          }
+        } catch (err) {
+          results[`tiktok_${account.platformId}`] = {
+            success: false,
+            error: extractErrorMessage(err),
           }
         }
       }
@@ -188,7 +243,7 @@ export async function POST(req: NextRequest) {
     where: { id: post.id },
     data: {
       status: allSuccess ? "published" : anySuccess ? "partial" : "failed",
-      results: JSON.stringify(results),
+      results,
       publishedAt: anySuccess ? new Date() : null,
     },
   })

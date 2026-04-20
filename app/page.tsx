@@ -2,7 +2,14 @@
 
 import { useState, useCallback, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import type { MediaFile, AccountInfo, PostResult, VideoMode, Privacy } from "@/types"
+import type {
+  MediaFile,
+  PostResult,
+  VideoMode,
+  Privacy,
+  TikTokPrivacy,
+} from "@/types"
+import { useAccounts } from "@/hooks/use-accounts"
 import { isVideoUrl } from "@/lib/utils"
 import { Sidebar } from "@/components/sidebar"
 import { ComposeForm } from "@/components/compose-form"
@@ -26,21 +33,15 @@ function PageContent() {
   ])
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [youtubeTitle, setYoutubeTitle] = useState("")
-  const [accounts, setAccounts] = useState<AccountInfo[]>([])
+  const { accounts } = useAccounts()
   const [draftId, setDraftId] = useState<string | null>(null)
   const [videoMode, setVideoMode] = useState<VideoMode>("reel")
   const [privacy, setPrivacy] = useState<Privacy>("public")
+  const [tiktokPrivacy, setTiktokPrivacy] =
+    useState<TikTokPrivacy>("SELF_ONLY")
   const [posting, setPosting] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
   const [postResult, setPostResult] = useState<PostResult | null>(null)
-
-  // Fetch connected accounts
-  useEffect(() => {
-    fetch("/api/accounts")
-      .then((res) => res.json())
-      .then(setAccounts)
-      .catch(() => {})
-  }, [])
 
   // Load draft from URL ?draft=id
   const draftParam = searchParams.get("draft")
@@ -54,8 +55,8 @@ function PageContent() {
           posts: {
             id: string
             content: string
-            mediaUrls: string | null
-            platforms: string
+            mediaUrls: string[] | null
+            platforms: string[]
             status: string
           }[]
         ) => {
@@ -65,12 +66,12 @@ function PageContent() {
           if (draft) {
             setDraftId(draft.id)
             setContent(draft.content)
-            setSelectedPlatforms(JSON.parse(draft.platforms))
+            setSelectedPlatforms(draft.platforms as string[])
             setPostResult(null)
 
             // Restore media from saved URLs
             if (draft.mediaUrls) {
-              const urls: string[] = JSON.parse(draft.mediaUrls)
+              const urls = draft.mediaUrls as string[]
               const restored: MediaFile[] = urls.map((url) => ({
                 id: crypto.randomUUID(),
                 preview: url,
@@ -84,7 +85,7 @@ function PageContent() {
           }
         }
       )
-      .catch(() => {})
+      .catch(() => toast.error("Failed to load draft"))
   }, [draftParam])
 
   // Upload new media files directly to Cloudinary on select
@@ -134,7 +135,9 @@ function PageContent() {
       } catch {
         setMediaFiles((prev) =>
           prev.map((f) =>
-            f.id === file.id ? { ...f, uploading: false } : f
+            f.id === file.id
+              ? { ...f, uploading: false, error: "Upload failed" }
+              : f
           )
         )
         toast.error("Failed to upload media")
@@ -196,6 +199,7 @@ function PageContent() {
           videoMode,
           youtubeTitle: youtubeTitle || undefined,
           privacy,
+          tiktokPrivacy,
         }),
       })
 
@@ -232,15 +236,15 @@ function PageContent() {
     } finally {
       setPosting(false)
     }
-  }, [content, selectedPlatforms, mediaFiles, videoMode, youtubeTitle, privacy])
+  }, [content, selectedPlatforms, mediaFiles, videoMode, youtubeTitle, privacy, tiktokPrivacy])
 
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
 
-      <main className="flex flex-1 overflow-hidden">
+      <main className="flex flex-1 flex-col overflow-auto lg:flex-row lg:overflow-hidden">
         {/* Compose Area */}
-        <div className="flex flex-1 flex-col overflow-auto p-6 lg:p-8">
+        <div className="flex flex-1 flex-col p-4 sm:p-6 lg:overflow-auto lg:p-8">
           <div className="mb-6">
             <h1 className="text-lg font-semibold tracking-tight">
               {draftId ? "Edit Draft" : "Create Post"}
@@ -262,6 +266,8 @@ function PageContent() {
             onVideoModeChange={setVideoMode}
             privacy={privacy}
             onPrivacyChange={setPrivacy}
+            tiktokPrivacy={tiktokPrivacy}
+            onTikTokPrivacyChange={setTiktokPrivacy}
             onPost={handlePost}
             onSaveDraft={handleSaveDraft}
             posting={posting}
@@ -272,8 +278,8 @@ function PageContent() {
 
         <div className="hidden w-px bg-border lg:block" />
 
-        {/* Preview Panel */}
-        <div className="hidden w-96 shrink-0 overflow-auto bg-muted/20 p-6 lg:block">
+        {/* Preview Panel — below on mobile, side on lg+ */}
+        <div className="border-t border-border bg-muted/20 p-4 sm:p-6 lg:w-96 lg:shrink-0 lg:overflow-auto lg:border-t-0">
           <PreviewPanel
             content={content}
             youtubeTitle={youtubeTitle}

@@ -29,7 +29,7 @@ export async function exchangeCodeForToken(code: string) {
   })
 
   const res = await fetch(`${GRAPH_API}/oauth/access_token?${params}`)
-  if (!res.ok) throw new Error("Failed to exchange code for token")
+  if (!res.ok) throw new Error("Facebook: failed to exchange code for token")
   return res.json() as Promise<{
     access_token: string
     token_type: string
@@ -46,7 +46,7 @@ export async function getLongLivedToken(shortToken: string) {
   })
 
   const res = await fetch(`${GRAPH_API}/oauth/access_token?${params}`)
-  if (!res.ok) throw new Error("Failed to get long-lived token")
+  if (!res.ok) throw new Error("Facebook: failed to get long-lived token")
   return res.json() as Promise<{
     access_token: string
     token_type: string
@@ -58,7 +58,7 @@ export async function getUserPages(accessToken: string) {
   const res = await fetch(
     `${GRAPH_API}/me/accounts?fields=id,name,access_token,picture&access_token=${accessToken}`
   )
-  if (!res.ok) throw new Error("Failed to get pages")
+  if (!res.ok) throw new Error("Facebook: failed to get pages")
   const data = await res.json()
   return data.data as Array<{
     id: string
