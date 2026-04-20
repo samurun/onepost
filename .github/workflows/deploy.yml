@@ -1,14 +1,14 @@
 # Deploy to Cloud Run on tag push (e.g. `v1.0.0`).
 #
 # Required GitHub secrets (under environment `development`):
-#   GCP_PROJECT_ID         — e.g. "onepost-prod"
-#   GCP_WIF_PROVIDER       — full WIF provider resource name, e.g.
-#                            "projects/123456789/locations/global/workloadIdentityPools/github/providers/github"
-#   GCP_SA_EMAIL           — deploy service account (Cloud Run Admin + Artifact Registry Writer + SA User)
-#   NEXT_PUBLIC_APP_URL    — public HTTPS URL of the service (inlined at build time)
+#   GCP_PROJECT_ID                        — e.g. "onepost-prod"
+#   GCP_WIF_PROVIDER                      — full WIF provider resource name
+#   GCP_SA_EMAIL                          — deploy service account
+#   NEXT_PUBLIC_APP_URL                   — Cloud Run URL (inlined at build time)
+#   NEXT_PUBLIC_SUPABASE_URL              — Supabase project URL
+#   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY  — Supabase publishable/anon key
 #
-# All runtime secrets live in Google Secret Manager under the name on the right-hand side
-# of each --set-secrets entry below. Grant the deploy SA `roles/secretmanager.secretAccessor`.
+# All other runtime secrets live in Google Secret Manager.
 
 name: Deploy to Cloud Run
 
@@ -34,6 +34,8 @@ jobs:
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       PUBLIC_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -52,12 +54,16 @@ jobs:
       - name: Build image
         run: |
           : "${PROJECT_ID:?GCP_PROJECT_ID secret is missing}"
+          : "${SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL secret is missing}"
+          : "${SUPABASE_KEY:?NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY secret is missing}"
           IMAGE_BASE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE}"
           TAG_REF="${IMAGE_BASE}:${GITHUB_REF_NAME}"
           TAG_LATEST="${IMAGE_BASE}:latest"
           echo "Building ${TAG_REF}"
           docker build \
             --build-arg NEXT_PUBLIC_APP_URL="${PUBLIC_URL}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="${SUPABASE_KEY}" \
             -t "${TAG_REF}" \
             -t "${TAG_LATEST}" \
             .
@@ -82,7 +88,7 @@ jobs:
             --concurrency=80 \
             --min-instances=0 \
             --max-instances=4 \
-            --set-env-vars "NEXT_PUBLIC_APP_URL=${PUBLIC_URL},NODE_ENV=production" \
+            --set-env-vars "NEXT_PUBLIC_APP_URL=${PUBLIC_URL},NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL},NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${SUPABASE_KEY},NODE_ENV=production" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,DIRECT_URL=DIRECT_URL:latest,FACEBOOK_APP_ID=FACEBOOK_APP_ID:latest,FACEBOOK_APP_SECRET=FACEBOOK_APP_SECRET:latest,INSTAGRAM_APP_ID=INSTAGRAM_APP_ID:latest,INSTAGRAM_APP_SECRET=INSTAGRAM_APP_SECRET:latest,YOUTUBE_CLIENT_ID=YOUTUBE_CLIENT_ID:latest,YOUTUBE_CLIENT_SECRET=YOUTUBE_CLIENT_SECRET:latest,CLOUDINARY_CLOUD_NAME=CLOUDINARY_CLOUD_NAME:latest,CLOUDINARY_API_KEY=CLOUDINARY_API_KEY:latest,CLOUDINARY_API_SECRET=CLOUDINARY_API_SECRET:latest"
 
       - name: Show service URL
